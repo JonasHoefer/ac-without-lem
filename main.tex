@@ -1,0 +1,641 @@
+\documentclass{scrarticle}
+
+% --------------------------------------------------------------------------------
+% ---- Basic math packages
+
+\usepackage{mathpartir}
+\usepackage{amsmath,mathtools} % load mathtools before unicode math
+
+% --------------------------------------------------------------------------------
+% ---- Fonts
+
+\usepackage{fontspec}
+\setmainfont{Libertinus Serif}
+\setsansfont{Libertinus Sans}
+% \setmonofont{Libertinus Mono} % really ugly
+% For math fonts one seems to also need unicode-math
+\usepackage{unicode-math}
+\setmathfont{Latin modern math}
+\setmathfont{GFSNeohellenicMath}[range={\boxbslash}]
+\setmathfont{XITS Math}[range={\smalltriangleright}]
+
+% --------------------------------------------------------------------------------
+% ---- Bibliography
+
+\usepackage[backend=biber]{biblatex}
+\addbibresource{references.bib}
+
+% --------------------------------------------------------------------------------
+% ---- Technical packages
+
+\usepackage{xcolor}
+\definecolor{darkred}{rgb}{0.45,0,0}
+\definecolor{darkgreen}{rgb}{0,0.45,0}
+\usepackage[pdfusetitle,colorlinks,citecolor=darkgreen,menucolor=darkred]{hyperref}
+\usepackage{xparse}
+\usepackage{xspace}
+
+% --------------------------------------------------------------------------------
+% ---- Lists
+
+\usepackage[inline]{enumitem}
+\setlist[enumerate,1]{label={(\arabic*)}}
+
+% --------------------------------------------------------------------------------
+% ---- Environments
+
+\usepackage{keytheorems}
+\usepackage{zref-clever}
+
+\renewkeytheoremstyle{plain}{bodyfont=\normalfont}
+
+\newkeytheorem{axiom}[style=plain]
+\newkeytheorem{theorem}[parent=section,style=plain]
+\newkeytheorem{conjecture}[parent=section,style=plain]
+\newkeytheorem{lemma}[sibling=theorem,style=plain]
+\newkeytheorem{proposition}[sibling=theorem,style=plain]
+\newkeytheorem{corollary}[sibling=theorem,style=plain]
+\newkeytheorem{definition}[sibling=theorem,style=plain,qed=\(\varlrtriangle\)]
+\newkeytheorem{extension}[sibling=theorem,style=plain]
+\newkeytheorem{construction}[sibling=theorem,style=plain]
+\newkeytheorem{notation}[sibling=theorem,style=plain]
+\newkeytheorem{example}[sibling=theorem,style=plain,qed=\(\varlrtriangle\)]
+\newkeytheorem{observation}[sibling=theorem,style=plain,name=Observation,refname={observation,observations},Refname={Observation,Observations},qed=\(\varlrtriangle\)]
+\newkeytheorem{remark}[sibling=theorem,style=remark,qed=\(\varlrtriangle\)]
+
+\numberwithin{equation}{theorem}
+
+
+% --------------------------------------------------------------------------------
+% ---- Math macros
+
+\ExplSyntaxOn
+\DeclareExpandableDocumentCommand{\IfNoValueOrEmptyTF}{mmm}
+{
+ \IfNoValueTF{#1}
+  {#2} % true
+  {\tl_if_empty:nTF {#1} {#2} {#3}} % false
+}
+\ExplSyntaxOff
+
+% ---- Basics
+\NewDocumentCommand\co{}{\mathchoice{\colon}{\colon}{\mkern-1mu\colon\mkern-5mu}{\colon}}
+\DeclarePairedDelimiter\paren{(}{)}
+\DeclarePairedDelimiter\card{\lvert}{\rvert}
+\NewDocumentCommand\N{s}{\IfBooleanTF{#1}{\mathsf{N}}{\mathbb{N}}}
+
+\DeclarePairedDelimiterX\setImpl[1]{\{}{\}}{#1}
+\NewDocumentCommand\set{sO{}>{\TrimSpaces}m>{\TrimSpaces}o}{
+  \IfNoValueOrEmptyTF{#3}{\emptyset}{
+    \IfValueTF{#4}{
+      \setImpl[#2]{#3 \mathbin{\delimsize|} \IfBooleanTF{#1}{\text{#4}}{#4}}
+    }{
+      \setImpl[#2]{#3}
+    }
+  }
+}
+
+% ---- Category theory
+\DeclareMathOperator\id{id}
+\NewDocumentCommand\category{m}{\mathbf{#1}}
+\NewDocumentCommand\cat{m}{\mathscr{#1}}
+\NewDocumentCommand\PSh{om}{\category{PSh}\IfValueT{#1}{_{#1}}(#2)}
+\NewDocumentCommand\Cat{}{\category{Cat}}
+\NewDocumentCommand\Set{}{\category{Set}}
+\NewDocumentCommand\CwF{}{\category{CwF}}
+\NewDocumentCommand\yo{m}{\mathbf{y}#1} % よ
+\NewDocumentCommand\Nerve{m}{N_{#1}}
+\NewDocumentCommand\Lan{mo}{{#1}_!}
+\NewDocumentCommand\Res{m}{{#1}^*}
+\NewDocumentCommand\Ran{mo}{{#1}_*}
+\NewDocumentCommand\op{}{\mathrm{op}}
+\NewDocumentCommand\comma{}{\mathbin{\downarrow}}
+\NewDocumentCommand\elems{om}{\smallint\IfValueTF{#1}{\nolimits\!\!_{#1}}{\!\!}#2}
+\NewDocumentCommand\Arr{m}{{#1}^{\to}}
+\NewDocumentCommand\RightCone{m}{{#1}^{\smalltriangleright}}
+\NewDocumentCommand\fibSlice{}{\mathbin{/\!\!/}}
+\NewDocumentCommand\cc{}{\mathbin{\circ}}
+\DeclarePairedDelimiter\pair{\langle}{\rangle}
+\DeclarePairedDelimiter\copair{[}{]}
+\DeclareMathOperator*\Pullback{\times}
+\DeclareMathOperator*\Pushout{+}
+
+\NewDocumentCommand\marked{}{\mathsf{m}}
+\NewDocumentCommand\separated{}{\mathsf{sep}}
+\NewDocumentCommand\Spine{}{\mathsf{spine}}
+\NewDocumentCommand\inner{}{\mathsf{inner}}
+
+\NewDocumentCommand\simplex{m}{\Delta^{#1}}
+\NewDocumentCommand\spine{m}{\mathrm{Sp}^{#1}}
+\NewDocumentCommand\horn{mm}{\Lambda^{#1}_{#2}}
+\NewDocumentCommand\SemiSimplex{s}{\IfBooleanTF{#1}{\Delta_{+,\marked}}{\Delta_+}}
+\NewDocumentCommand\semiSimplex{m}{\Delta_{+}^{#1}}
+
+
+\NewDocumentCommand\fib{}{\twoheadrightarrow}
+\NewDocumentCommand\cof{}{\rightarrowtail}
+\NewDocumentCommand\ff{}{\hookrightarrow}
+
+\NewDocumentCommand\Leibniz{m}{\mathbin{\widehat{#1}}}
+\NewDocumentCommand\Match{mm}{\mathrm{M}_{#1}{#2}}
+\NewDocumentCommand\sk{m}{\mathrm{sk}_{#1}}
+\NewDocumentCommand\cosk{m}{\mathrm{cosk}_{#1}}
+\NewDocumentCommand\res{m}{\mathrm{res}_{#1}}
+\DeclareMathOperator*\colim{colim}
+
+
+% ---- Type theory
+\NewDocumentCommand\Univ{smo}{\IfBooleanTF{#1}{\dot{\mathcal{#2}}}{\mathcal{#2}}\IfValueTF{#3}{_{#3}}{}} % TODO: remove old U, V, W macros
+\NewDocumentCommand\HS{}{\mathrm{HS}}
+\NewDocumentCommand\Rd{}{\mathrm{Rd}}
+\NewDocumentCommand\Lv{}{\mathrm{Lv}}
+\NewDocumentCommand\Fib{}{\mathrm{Fib}}
+
+\NewDocumentCommand\U{s}{\IfBooleanTF{#1}{\mathcal{U}_{\mathsf{i}}}{\mathcal{U}}}
+\NewDocumentCommand\V{}{\mathcal{V}}
+\NewDocumentCommand\W{}{\mathcal{W}}
+\DeclarePairedDelimiter\trunc{\lVert}{\rVert}
+
+\NewDocumentCommand\Ty{}{\mathrm{Ty}}
+\NewDocumentCommand\Prop{}{\mathrm{Prop}}
+\NewDocumentCommand\Tm{}{\mathrm{Tm}}
+\NewDocumentCommand\p{}{\mathsf{p}}
+\NewDocumentCommand\q{}{\mathsf{q}}
+
+
+% ---- Type theories
+\NewDocumentCommand\ETT{}{{\mathbb{E}\textsc{tt}}}
+
+\NewDocumentCommand\UIP{}{\mathsf{UIP}}
+\NewDocumentCommand\FE{}{\mathsf{FE}}
+\NewDocumentCommand\AC{}{\mathsf{AC}}
+\NewDocumentCommand\PT{}{\mathsf{PT}}
+\NewDocumentCommand\GC{}{\mathsf{GC}}
+\NewDocumentCommand\EM{}{\mathsf{EM}}
+
+
+\NewDocumentCommand\Id{}{\mathsf{Id}}
+\NewDocumentCommand\refl{o}{\mathsf{refl}\IfValueT{#1}{_{#1}}}
+\NewDocumentCommand\elim{}{\mathsf{elim}}
+
+% ---- Abbreviations
+
+\ExplSyntaxOn
+\NewDocumentCommand\DeclareAbbreviation{mm}{
+  \newcommand{#1}{
+    \peek_charcode:NTF.{#2}{#2.\@\xspace}
+  }
+}
+\ExplSyntaxOff
+
+\DeclareAbbreviation{\ie}{i.e}
+\DeclareAbbreviation{\eg}{e.g}
+\DeclareAbbreviation{\cf}{cf}
+\DeclareAbbreviation{\etc}{etc}
+\DeclareAbbreviation{\resp}{resp}
+\DeclareAbbreviation{\etal}{et al}
+\DeclareAbbreviation{\wrt}{w.r.t}
+
+
+% --------------------------------------------------------------------------------
+% ---- TikZ
+
+\usepackage{tikz-cd}
+% \tikzcdset{arrow style=tikz, diagrams={>={Latex}}}
+\tikzcdset{every arrow/.append style = -{>[scale=0.9]}}
+\tikzset{
+  phantom/.style = {/tikz/commutative diagrams/phantom},
+  near/.style = {phantom, very near start},
+  pullback/.style = {near, "\lrcorner"},
+  pullback-mirrored/.style = {near, "\llcorner"},
+  pushout/.style = {near, "\ulcorner"},
+  pushout-mirrored/.style = {near, "\urcorner"},
+  % fully faithful functors
+  ff/.style = {commutative diagrams/hook},
+  % Epis and monos
+  epi/.style = {commutative diagrams/two heads},
+  mono/.style = {commutative diagrams/tail},
+  % Model categories
+  cof/.style = {{Triangle[open,reversed,scale=0.9]}->},
+  fib/.style = {-{Triangle[open,scale=0.9]}},
+  weq/.style = {"\sim"'{sloped,font=\tiny,#1}},
+  weq'/.style = {"\sim"{sloped,font=\tiny,#1}},
+  tcof/.style = {cof,weq={#1}},
+  tfib/.style = {fib,weq={#1}},
+  % Models of type theory
+  % equiv/.style = {weq},
+  % disp/.style = {fib}
+}
+\NewDocumentCommand\mono{}{\rightarrowtail}
+
+
+% --------------------------------------------------------------------------------
+% ---- Main document
+
+\usepackage{todonotes}
+
+\title{Dominik's messed-up question}
+\author{Jonas Höfer}
+\date{}
+
+\begin{document}
+\maketitle
+
+\section{Preliminaries}
+
+We define an extension of extensional type theory which we will still just denote \(\ETT\).
+The sorts of the theory are given by a sort of type and a representable sort of terms
+\begin{mathpar}
+  \vdash\Ty\co\mdlgwhtsquare,
+  \and
+  A\co\Ty\vdash\Tm(A):*.
+\end{mathpar}
+We include basic type formers, such as natural numbers and empty, unit, coproduct, dependent function, and dependent pair types.
+These are formalized the usual way\footnote{We make use of the usual shorthands in the logical framework. For example, isomorphisms unfold to two operations and two equalities.}, \eg,
+\begin{mathpar}
+  A \co \Ty, B \co \Tm(A) \to \Ty \vdash \Pi_{A}B \co \Ty,
+  \and
+  A \co \Ty, B \co \Tm(A) \to \Ty \vdash \paren[\big]{ \paren{u \co \Tm(A) } \to \Tm(B(u)) } \cong \Tm(\Pi_A B).
+\end{mathpar}
+For readability, we will omit \(\Tm\) when declaring more rules for this theory.
+Since we consider extensional type theory, we include the reflection rule for equality
+\begin{mathpar}
+  A\co\Ty, u, v \co A\vdash \Id_A(u,v) \co \Ty,
+  \and
+  A\co\Ty, u, v\co A, p \co \Id_A(u,v) \vdash u = v,
+  \and
+  A\co\Ty, u\co A, p \co \Id_A(u,u) \vdash p = \refl[u],
+  \and
+  A\co\Ty, u\co A \vdash \refl[u] \co \Id_A(u,u).
+\end{mathpar}
+As a consequence, we have that \(\ETT \vdash \UIP\) and \(\ETT \vdash \FE\).
+To state forms of the axiom of choice, we include a form of truncation.
+We axiomatize them as a reflection into subsingleton types.
+We write \(\Prop\) as a shorthand for those \(A \co \Ty\) with \(u, v \co A \vdash u = v\).
+\begin{mathpar}
+  A\co\Ty \vdash \trunc{A} \co \Prop,
+  \and
+  A\co\Ty,u,v\co\trunc{A} \vdash u = v,
+  \and
+  A\co\Ty, u\co A \vdash \eta_A(u) \co\trunc{A},
+  \and
+  A\co\Ty, P\co\Prop^{\trunc{A}}, u\co\paren[\big]{v \co A } \to P(\eta_A(v)),w\co\trunc{A}\vdash \elim(u,w) \co P(w),
+  \\
+  A\co\Ty, P\co\Prop^{\trunc{A}}, u\co\paren[\big]{v \co A } \to P(\eta_A(v)),w\co A\vdash \elim(u, \eta_A(w)) = u(w).
+\end{mathpar}
+Using the truncation we can now state different versions of the axiom of choice.
+
+\begin{definition}
+  Over \(\ETT\), we define the following principles:
+  \begin{description}[leftmargin=0cm]
+    \item[\(\AC\)] The \emph{axiom of choice} states that every total relation contains a function, \ie, for all \(A, B \co \Ty\) and \(a \co A, b \co B \vdash R(a, b) \co \Prop\) there is some \(u \co \prod_{a \co A} \trunc{\Sigma_{B} R(a)} \vdash \kappa_A(u) \co \trunc{\prod_{a \co A}\sum_{B} R(a)}\).
+    \item[\(\PT\)] The principle of \emph{projective types} states that every type is projective, \ie, for all \(A \co \Ty\) and \(a \co A \vdash P(a) \co \Ty\) there is some \(u \co \Pi_{a\co A}\trunc{P(a)} \vdash \kappa_A(u) \co \trunc{\Pi_AP}\).
+    \item[\(\GC\)] The principle of \emph{global choice} states that the support of every type splits, \ie, for all \(A \co \Ty\) there is an element \(u \co \trunc{A} \vdash \varepsilon_A(u) \co A\). \qedhere
+  \end{description}
+\end{definition}
+
+Over \(\ETT\) the principles \(\AC\) and \(\PT\) are equivalent.
+The principle \(\GC\) is in general stronger.
+In the presence of a universe we can merely extract a choice function restricted to this universe by using that \(\prod_{A \co \U, p \co \trunc{A}} \trunc{A}\) is inhabited by the identity.
+
+\begin{proposition}
+  \(\ETT \vdash \AC \leftrightarrow \PT\) and \(\ETT + \GC \vdash \AC, \PT\).
+\end{proposition}
+\begin{proof}
+  We only show the first claim.
+  \todo[inline]{Do; by singleton contraction and UIP}
+\end{proof}
+
+Our goal is to relate the above to (restricted versions of) the law of the excluded middle.
+
+\begin{definition}
+  Over \(\ETT\), we define the following principles:
+  \begin{description}[leftmargin=0cm]
+    \item[\(\EM\)] The \emph{law of the excluded middle} states that every proposition is decidable, \ie, for all \(A \co \Prop\) we have \(\vdash \delta_A \co A + \neg A\).
+    \item[\(\EM_=\)] The principle of \emph{decidable equality} is \(\EM\) restricted to identity types, \ie, for all \(A \co \Ty\) and \(u, v \co \Ty\) we have \(\vdash \delta_{\Id_A}(u, v) \co \Id_A(u, v) + \neg \Id_A(u, v)\). \qedhere
+  \end{description}
+\end{definition}
+
+By \(\UIP\) we have that \(\ETT + \EM \vdash \EM_=\).
+An observation of Dominik Kirst is that over \(\ETT\) the principle \(\AC\) implies \(\EM_=\) by adapting Diaconescu's theorem.
+It does not seem to imply full \(\EM\) without propositional extensionality.
+Our goal is to show that this is indeed the case.
+
+\begin{theorem}
+  \(\ETT + \AC \vdash \EM_=\).
+\end{theorem}
+\begin{proof}
+  \todo[inline]{Do}
+\end{proof}
+
+
+\section{Hopefully a counter model}
+
+Let \(\omega\) denote the partially ordered set \(\set{0 < 1 < \ldots}\) viewed as an inverse category.
+This means \(\omega^{\op}\) is the category \(\ldots \to 1 \to 0\).
+We equip \(\omega^{\op}\) with the Grothendieck topology in which every morphism is covering. 
+We will consider separated presheaves for this topology.
+A presheaf is separated if there exists at most one patching, \ie, a separated presheaf \(A\) on \(\omega^{\op}\) is given by an ascending chain of monomorphisms \(A_0 \mono A_1 \mono \ldots\).
+
+The category of separated presheaves is a quasitopos~\cite[A2.6]{Johnstone2002Elephant1} which we denote \(\cat{E}\).
+It is a full subcategory of the presheaf topos \([\omega, \Set]\).
+We recall a standard result about \(\cat{E}\) being reflective in \([\omega, \Set]\).
+Furthermore, we note that the unit of the reflector is a levelwise epimorphism which will be crucial later.
+
+\begin{proposition}\label{prop:quasi-topos-is-reflective}
+  The inclusion \(U \co \cat{E} \ff [\omega, \Set]\) has a left adjoint \(L \co [\omega, \Set] \to \cat{E}\).
+  Furthermore, the unit \(\eta \co \id \to UL\) is valued in levelwise epimorphisms.
+\end{proposition}
+\begin{proof}
+  This is~\cite[page~43,paragraph~3]{Vistoli2008}.
+  Concretely, for \(X \in [\omega, \Set]\) the separated presheaf \(LX\) is given at \(n\in\omega\) by the quotient of \(X^n\) that identifies two local sections \(u, v \in X^n\) if there exists some \(m \geq n\) such that \(u|_m = v|_m\).
+\end{proof}
+
+\todo[inline]{I think we also need this to be stable}
+
+\begin{example}\label{ex:coequalizer-are-not-levelwise-in-quasi-topos}
+  The forgetful functor \(\cat{E} \to [\omega, \Set]\) does not create coequalizer.
+  Consider the following example where all involved presheaves are constant on \(\omega_{\geq 1}\).
+  \[\begin{tikzcd}
+    0 && 2 && 2 \\
+    \\
+    {2 \times 2} && 2 && 1 \\
+    \\
+    \ldots && \ldots && \ldots
+    \arrow[shift left=2, from=1-1, to=1-3]
+    \arrow[shift right=2, from=1-1, to=1-3]
+    \arrow[from=1-1, to=3-1]
+    \arrow[dashed, two heads, from=1-3, to=1-5]
+    \arrow[equals, from=1-3, to=3-3]
+    \arrow[two heads, from=1-5, to=3-5]
+    \arrow[shift left=2, from=3-1, to=3-3]
+    \arrow[shift right=2, from=3-1, to=3-3]
+    \arrow[equals, from=3-1, to=5-1]
+    \arrow[dashed, two heads, from=3-3, to=3-5]
+    \arrow[equals, from=3-3, to=5-3]
+    \arrow[equals, from=3-5, to=5-5]
+  \end{tikzcd}\]
+  The top row is trivially a coequalizer.
+  The second and all following rows are exactly the image factorization.
+\end{example}
+
+\begin{proposition}\label{prop:forgetful-functor-creates}
+  The forgetful functor \(U \co \cat{E} \ff [\omega, \Set]\) creates
+  \begin{enumerate*}
+    \item\label{prop:forgetful-functor-creates:limits} limits,
+    \item\label{prop:forgetful-functor-creates:coproducts} coproducts,
+    \item\label{prop:forgetful-functor-creates:epimorphisms} epimorphisms,
+    \item\label{prop:forgetful-functor-creates:images} image factorizations,
+    \item\label{prop:forgetful-functor-creates:exponentials} exponentials, and
+    \item\label{prop:forgetful-functor-creates:pushforwards} pushforwards.
+  \end{enumerate*} 
+\end{proposition}
+\begin{proof}
+  \begin{description}[leftmargin=0cm]
+    \item[\ref{prop:forgetful-functor-creates:limits}] By \zcref{prop:quasi-topos-is-reflective}, the inclusion is monadic and therefore creates limits.
+    \item[\ref{prop:forgetful-functor-creates:coproducts}] Coproducts of monomorphisms in \(\Set\) are monomorphisms.
+    \item[\ref{prop:forgetful-functor-creates:epimorphisms}] Epimorphisms in \([\omega,\Set]\) are levelwise.
+      Since two morphisms in \(\cat{E}\) agree if they are equal levelwise, we have that levelwise epimorphisms are also epi in \(\cat{E}\).
+    \item[\ref{prop:forgetful-functor-creates:images}] Consider the factorization of a morphism \(f \co A \to B\) between objects of \(\cat{E}\) in \([\omega, \Set]\):
+      \[\begin{tikzcd}
+        {A_0} && {\mathrm{Img}(f_0)} && {B_0} \\
+        \\
+        {A_1} && {\mathrm{Img}(f_1)} && {B_1\rlap{.}}
+        \arrow[two heads, from=1-1, to=1-3]
+        \arrow[tail, from=1-1, to=3-1]
+        \arrow[tail, from=1-3, to=1-5]
+        \arrow[dashed, from=1-3, to=3-3]
+        \arrow[tail, from=1-5, to=3-5]
+        \arrow[two heads, from=3-1, to=3-3]
+        \arrow[tail, from=3-3, to=3-5]
+      \end{tikzcd}\]
+      By the left-cancellation property of monomorphisms, the dashed map is a also mono.
+    \item[\ref{prop:forgetful-functor-creates:exponentials}]
+    \item[\ref{prop:forgetful-functor-creates:pushforwards}]
+  \end{description}
+\end{proof}
+
+\begin{example}\label{ex:epimorphisms-are-not-levelwise-in-quasi-topos}
+  Not every epimorphism in \(\cat{E}\) is levelwise.
+  Consider the morphism \(i\) in \([2, \Set]\) between monomorphisms below.
+  The example can be extended to a one in \(\cat{E}\), as in \zcref{ex:coequalizer-are-not-levelwise-in-quasi-topos}.
+  \[\begin{tikzcd}
+    0 && 1 && {A_0} \\
+    \\
+    2 && 1 && {A_1}
+    \arrow["{i_0}", from=1-1, to=1-3]
+    \arrow[tail, from=1-1, to=3-1]
+    \arrow["{f_0}", shift left=2, from=1-3, to=1-5]
+    \arrow["{g_0}"', shift right=2, from=1-3, to=1-5]
+    \arrow[tail, from=1-3, to=3-3]
+    \arrow["{a}", tail, from=1-5, to=3-5]
+    \arrow["{i_1}", two heads, from=3-1, to=3-3]
+    \arrow["{f_1}", shift left=2, from=3-3, to=3-5]
+    \arrow["{g_1}"', shift right=2, from=3-3, to=3-5]
+  \end{tikzcd}\]
+  Suppose \(f \cc i = g \cc i\).
+  Since \(i_1\) is epi, we have \(f_1 = g_1\).
+  Thus, \(a \cc f_0 = a \cc g_0\).
+  Since \(a\) is mono, we have \(f_0 = g_0\).
+  Consequently, the forgetful functor does not preserve epimorphisms.
+\end{example}
+
+
+\subsection{An interpretation of type theory}
+
+Fix a Grothendieck universe \(\V\).
+We define a universe \(\U\) in \(\cat{E}\) by setting \(\U\) be the constant presheaf on \(\V\)-small objects of \(\cat{E}\) and setting \(\dot{\U}_n \coloneqq \coprod_{A\in \U_n} A_n\) with the evident functorial action. 
+There is an evident projection \(\p \co \dot{\U} \to \U\).
+Note that both \(\U\) and \(\dot{\U}\) lay in \(\cat{E}\).
+
+We define a model of the theory \(\ETT\).
+The category of contexts is given by \(\cat{E}\).
+The presheaf of types is the one represented by \(\U\), \ie, we set \(\Ty_{\cat{E}} \coloneqq \cat{E}(-, \U)\).
+Given \(A \co \Gamma \to \U\) the context extension \(\p_A \co \Gamma.A \to \Gamma\) is the chosen pullback of \(\p \co \dot{\U} \to \U\) along \(A \co \Gamma \to \U\).
+This is well-defined by \zcref{prop:forgetful-functor-creates}~\ref{prop:forgetful-functor-creates:limits}.
+This defines a category with attributes.
+By the equivalence with CwFs, this induces a presheaf of terms \(\Tm_{\cat{E}}\) which at \(\Gamma \in \cat{E}\) and \(A \co \Gamma \to \U\) is given by the set \(\Tm_{\cat{E}}(\Gamma, A)\) of sections of \(\p_A\).
+
+
+
+
+
+\printbibliography
+
+\newpage
+
+
+\section{Question}
+
+The goal is to produce a model of type theory with a non-univalent universe of propositions, decidable equality, negation of excluded middle, and choice.
+This might be possible since in the absence of univalence for the universe of propositions Diaconescu's theorem does not seem to go through.
+We will work in a classical meta-theory, \ie, assume the axiom of choice in \(\Set\).
+
+\begin{definition}
+  Let \(\mathbb{T}\) be the extension of type theory by uniqueness of identity proofs and function extensionality.
+
+  We write \(\exists_{a \co A} P(a)\) as a shorthand for \(\trunc{\sum_{A}P}\).
+\end{definition}
+
+\begin{definition}
+  We define the following principles:
+  \begin{description}
+    \item[PT] For all types \(\vdash A\) and families \(a \co A \vdash P(a)\), given \(a \co A \vdash \trunc{P(a)}\) we have \(\vdash \trunc{ \prod_{a \co A} P(a) }\).
+    \item[AC] For all types \(\vdash A, B\) and relations \(a \co A, b \co B \vdash R(A, B) \co \Omega\) such that \(a \co A \vdash \exists_{b \co B} R(a, b)\) we have \(\vdash \exists_{f \co A \to B} \prod_{a \co A} R(a, f(a))\). \qedhere
+  \end{description}
+\end{definition}
+
+
+\todo[inline]{Are the above equivalent in our setting?}
+
+
+\section{Candidate?}
+
+\todo[inline]{Does FE hold in this model?}
+
+Let \(\cat{S}\) be the Sirpinski topos, which we view as covariant presheaves on \([1] = \set{0 < 1}\), \ie, as \(\Arr{\Set}\).
+We consider the Grothendieck topology with a single non-trivial sieve, which is generated by \(0 < 1\).
+Denote the quasi-topos of separated presheaves for this topology by \(\cat{E}\).
+
+Recall that \(\Set\) has an orthogonal factorization system given by surjections and injections and that this factorization system is stable.
+
+\begin{lemma}\label{prop:separation-is-factorization}
+  The separation functor \(L \co \cat{S} \to \cat{E}\) is given by the second factor of the epi-mono factorization in \(\Set\).
+\end{lemma}
+\begin{proof}
+  The catgory \(\cat{E}\) of separated presheaves is the subcategory of the arrow category of \(Set\) on monomorphisms.
+  The right factor functor for an orthogonal factorization system is exactly the reflection into right maps.
+\end{proof}
+
+We first establish some closure properties of \(\cat{E} \subseteq \cat{S}\).
+
+\begin{lemma}
+  The forgetful functor \(\cat{E} \to \cat{S}\) creates the following:
+  \begin{enumerate}
+    \item limits,
+    % \item filtered colimits, % can be read of from the orthogonality class generating this factorization system
+    \item truncations,
+    \item exponentials,
+    \item pushforwards.
+  \end{enumerate}
+\end{lemma}
+\begin{proof}
+  The first claim follow from the monadic functors creating limits.
+  For the second claim we consider the truncation of an object \(A \in \cat{E}\), \ie, the image of the unique map \(A \to 1\).
+  In \(\cat{S}\), this image can be computed as the following coequalizer:
+  \[\begin{tikzcd}
+    {A_0 \times A_0} && {A_0} && {\trunc{A_0}} && 1 \\
+    \\
+    {A_1 \times A_1} && {A_1} && {\trunc{A_1}} && {1\rlap{.}}
+    \arrow["{\pi_0}", shift left=2, from=1-1, to=1-3]
+    \arrow["{\pi_1}"', shift right=2, from=1-1, to=1-3]
+    \arrow[tail, from=1-1, to=3-1]
+    \arrow[two heads, from=1-3, to=1-5]
+    \arrow[tail, from=1-3, to=3-3]
+    \arrow[tail, from=1-5, to=1-7]
+    \arrow[dashed, from=1-5, to=3-5]
+    \arrow[equals, from=1-7, to=3-7]
+    \arrow["{\pi_0}", shift left=2, from=3-1, to=3-3]
+    \arrow["{\pi_1}"', shift right=2, from=3-1, to=3-3]
+    \arrow[two heads, from=3-3, to=3-5]
+    \arrow[tail, from=3-5, to=3-7]
+  \end{tikzcd}\]
+  But now the dashed morphisms is mono by a cancelation property of monomorphisms.
+  Hence, it is already in the reflective subcategory.
+
+  For the third claim we have to show that the map \((A^B)_0 \to (A^B)_1\) is mono.
+  We have that \((A^B)_0 = \Arr{\Set}(A, B)\) and that \((A^B)_1 = A_1^{B_1}\).
+  Consider any morphism from \(A\) to \(B\):
+  \[\begin{tikzcd}
+    {A_0} && {B_0} \\
+    \\
+    {A_1} && {B_1\rlap{.}}
+    \arrow["{f_0}", from=1-1, to=1-3]
+    \arrow[tail, from=1-1, to=3-1, "a"]
+    \arrow[tail, from=1-3, to=3-3, "b"]
+    \arrow["{f_1}"', from=3-1, to=3-3]
+  \end{tikzcd}\]
+  The component \(f_0\) is uniquely determined since \(f_0 \cc b = f_1 \cc a\) and \(b\) is mono.
+  Hence, there exists at most one factorization of \(f_1 \cc a\) over \(b\) making the square commute.
+
+  For the fourth claim we use the characterization of a pushforward as the fiber of an exponential.
+\end{proof}
+
+\begin{corollary}
+  Monomorphisms and truncations \(\eta_A \co A \to \trunc{A}\) in \(\cat{E}\) are levelwise.
+\end{corollary}
+
+\begin{corollary}
+  The quasi topos \(\cat{E}\) saitisfies function exponentiality.
+\end{corollary}
+\begin{proof}
+  The statement is computed as in \(\cat{S}\).
+\end{proof}
+
+\begin{lemma}
+  Coequalizer in \(\cat{E}\) are levelwise epimorphisms.
+\end{lemma}
+\begin{proof}
+  A colimit in a reflective subcategory is computed as the reflection of the colimit in the ambient category.
+  By \zcref{prop:separation-is-factorization}, the reflection is given by the epi-mono factorization in \(\Set\).
+  Hence, the coequalizer is given by the following monomorphism on the right:
+  \[\begin{tikzcd}
+    {R_0} && {A_0} && {A_0 / R_0} && {\trunc{A_0 / R_0}} \\
+    \\
+    {R_1} && {A_1} && {A_1 / R_1} && {A_1 / R_1}
+    \arrow[shift left=2, from=1-1, to=1-3]
+    \arrow[shift right=2, from=1-1, to=1-3]
+    \arrow[tail, from=1-1, to=3-1]
+    \arrow[two heads, from=1-3, to=1-5]
+    \arrow[tail, from=1-3, to=3-3]
+    \arrow["{(\eta_{A/R})_0}", two heads, from=1-5, to=1-7]
+    \arrow[from=1-5, to=3-5]
+    \arrow[tail, from=1-7, to=3-7]
+    \arrow[shift left=2, from=3-1, to=3-3]
+    \arrow[shift right=2, from=3-1, to=3-3]
+    \arrow[two heads, from=3-3, to=3-5]
+    \arrow["{(\eta_{A/R})_1}"', equals, from=3-5, to=3-7]
+  \end{tikzcd}\]
+  The universal cocone is given by composing the universal cocone with the unit of the monad.
+  As the unit is epi (since it is given by the first factor of the factorization and the identity) the claim follows.
+\end{proof}
+
+\begin{proposition}
+  Levelwise epimorphisms in \(\cat{E}\) split.
+\end{proposition}
+\begin{proof}
+  Consider the following levelwise epimorphism in \(\cat{E}\):
+  \[\begin{tikzcd}
+    {A_0} && {B_0} \\
+    \\
+    {A_1} && {B_1\rlap{.}}
+    \arrow["{f_0}", two heads, from=1-1, to=1-3]
+    \arrow[tail, from=1-1, to=3-1]
+    \arrow[tail, from=1-3, to=3-3]
+    \arrow["{f_1}", two heads, from=3-1, to=3-3]
+  \end{tikzcd}\]
+  Since every monomorphism in \(\Set\) is decidable, the right map is equivalent to a coproduct injection.
+  By extensivitiy, the bottom map can be written as a coproduct of two maps, both of which are epimorphism.
+  Hence, it suffices to consider a square as below on the right:
+  \[\begin{tikzcd}
+    {B_0} && {A_0} && {B_0} \\
+    && {A_0'} \\
+    {B_0 + B_1'} && {A_0' + A_1'} && {B_0 + B_1'\rlap{.}}
+    \arrow["{s_0}", dashed, from=1-1, to=1-3]
+    \arrow["{\iota_0}", tail, from=1-1, to=3-1]
+    \arrow["{f_0}", two heads, from=1-3, to=1-5]
+    \arrow["i", tail, from=1-3, to=2-3]
+    \arrow["{\iota_0}", tail, from=1-5, to=3-5]
+    \arrow["{f_1'}"', from=2-3, to=1-5]
+    \arrow["{\iota_0}", from=2-3, to=3-3, tail]
+    \arrow["{i \cc s_0 + s_1}", dashed, from=3-1, to=3-3]
+    \arrow["{f_1' + f_1''}", two heads, from=3-3, to=3-5]
+  \end{tikzcd}\]
+  Now every splitting \(s_0\) of \(f_0\) induces one of \(f_1'\).
+  Thus, by splitting \(f_0\) and \(f_1''\) we obtain a splitting of the bottom map such that the left square commutes by construction.
+\end{proof}
+
+
+\printbibliography%
+
+\end{document}
