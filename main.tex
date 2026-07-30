@@ -444,17 +444,65 @@ Furthermore, we note that the unit of the reflector is a levelwise epimorphism w
 \subsection{An interpretation of type theory}
 
 Fix a Grothendieck universe \(\V\).
-We define a universe \(\U\) in \(\cat{E}\) by setting \(\U\) be the constant presheaf on \(\V\)-small objects of \(\cat{E}\) and setting \(\dot{\U}_n \coloneqq \coprod_{A\in \U_n} A_n\) with the evident functorial action. 
-There is an evident projection \(\p \co \dot{\U} \to \U\).
-Note that both \(\U\) and \(\dot{\U}\) lay in \(\cat{E}\).
+We write \(\V_{\HS}\) for the Hofmann-Streicher lifting of the universe and \(\V_{\HS,\separated} \subseteq \V_{\HS}\) for the subuniverse on separated presheaves.
+These universes are not separated since the functorial actions on \(n < m\) is given by restriction along \(\omega_{\geq m} \ff \omega_{\geq n}\).
 
-We define a model of the theory \(\ETT\).
-The category of contexts is given by \(\cat{E}\).
-The presheaf of types is the one represented by \(\U\), \ie, we set \(\Ty_{\cat{E}} \coloneqq \cat{E}(-, \U)\).
-Given \(A \co \Gamma \to \U\) the context extension \(\p_A \co \Gamma.A \to \Gamma\) is the chosen pullback of \(\p \co \dot{\U} \to \U\) along \(A \co \Gamma \to \U\).
-This is well-defined by \zcref{prop:forgetful-functor-creates}~\ref{prop:forgetful-functor-creates:limits}.
-This defines a category with attributes.
-By the equivalence with CwFs, this induces a presheaf of terms \(\Tm_{\cat{E}}\) which at \(\Gamma \in \cat{E}\) and \(A \co \Gamma \to \U\) is given by the set \(\Tm_{\cat{E}}(\Gamma, A)\) of sections of \(\p_A\).
+\begin{observation}
+  The category \(\omega^{\op}\) has a terminal object.
+  Hence, \(\Gamma \co \PSh{\omega^{\op}} \to \Set\) is given by evaluation.
+  Consequently, in the sequence of adjoints \(\pi_0 \dashv \Delta \dashv \Gamma \dashv \nabla\) the functors \(\Delta\) and \(\nabla\) are fully faithful since they are Kan extensions along a fully faithful functor.
+  
+  Thus, \(\Set\) is embeds into \([\omega, \Set]\) in two ways.
+  Furthermore, \(\Delta\) factors over the subcategory \(\cat{E}\) since all restriction operations of a constant presheaf are in particular mono.
+  Hence, the adjoint triple \(\pi_0 \dashv \Delta \dashv \Gamma\) descends to one between \(\Set\) and \(\cat{E}\), witnessing \(\Set\) to be reflective and coreflective in \(\cat{E}\).
+  We obtain the usual global sections comonad \(\Delta \cc \Gamma\) on \(\cat{E}\). 
+\end{observation}
+
+\begin{construction}
+  The universes \(\dot{\U} \to \U\) and \(\dot{\U}_{\separated} \to \U_{\separated}\) are defined by pulling back in \([\omega, \Set]\) along the counit \(\varepsilon \co \Delta\Gamma \Rightarrow \id\) of the global sections comonad:
+  \[\begin{tikzcd}
+    {\dot{\U}_{\separated}} && {\dot{\V}_{\HS, \separated}} & \\
+    & {\dot{\U}} && {\dot{\V}_{\HS}} \\
+    {\U_{\separated}} && {\V_{\HS, \separated}} \\
+    & \U && {\V_{\HS}\rlap{.}}
+    \arrow[from=1-1, to=1-3]
+    \arrow[from=1-1, to=2-2]
+    \arrow[from=1-1, to=3-1]
+    \arrow[from=1-3, to=2-4]
+    \arrow[from=1-3, to=3-3]
+    \arrow[from=2-2, to=2-4]
+    \arrow[from=2-2, to=4-2]
+    \arrow[from=2-4, to=4-4]
+    \arrow["\varepsilon"', from=3-1, to=3-3]
+    \arrow[from=3-1, to=4-2]
+    \arrow[from=3-3, to=4-4]
+    \arrow["\varepsilon"', from=4-2, to=4-4]
+  \end{tikzcd}\]
+  The left square is a pullback and the universe \(\dot{\U}_{\separated} \to \U_{\separated}\) lays in \(\cat{E}\).
+  Furthermore, the above components of the counit are epi.
+\end{construction}
+\begin{proof}
+  The right face of the cube is a pullback square by definition.
+  Hence, by pasting, the left square is a pullback as-well.
+
+  % surj: use that we can just copy the first stage
+  % in E: use that the sep. one is fiberwise sep. Hence, pulling back to something in E yields something in E
+
+  \todo[inline]{Finish}
+\end{proof}
+
+
+% We define a universe \(\U\) in \(\cat{E}\) by setting \(\U\) be the constant presheaf on \(\V\)-small objects of \(\cat{E}\) and setting \(\dot{\U}_n \coloneqq \coprod_{A\in \U_n} A_n\) with the evident functorial action. 
+% There is an evident projection \(\p \co \dot{\U} \to \U\).
+% Note that both \(\U\) and \(\dot{\U}\) lay in \(\cat{E}\).
+
+% We define a model of the theory \(\ETT\).
+% The category of contexts is given by \(\cat{E}\).
+% The presheaf of types is the one represented by \(\U\), \ie, we set \(\Ty_{\cat{E}} \coloneqq \cat{E}(-, \U)\).
+% Given \(A \co \Gamma \to \U\) the context extension \(\p_A \co \Gamma.A \to \Gamma\) is the chosen pullback of \(\p \co \dot{\U} \to \U\) along \(A \co \Gamma \to \U\).
+% This is well-defined by \zcref{prop:forgetful-functor-creates}~\ref{prop:forgetful-functor-creates:limits}.
+% This defines a category with attributes.
+% By the equivalence with CwFs, this induces a presheaf of terms \(\Tm_{\cat{E}}\) which at \(\Gamma \in \cat{E}\) and \(A \co \Gamma \to \U\) is given by the set \(\Tm_{\cat{E}}(\Gamma, A)\) of sections of \(\p_A\).
 
 
 
