@@ -234,7 +234,7 @@
 
 \usepackage{todonotes}
 
-\title{Dominik's messed-up question}
+\title{Choice without excluded middle?}
 \author{Jonas Höfer}
 \date{}
 
@@ -325,7 +325,22 @@ Our goal is to show that this is indeed the case.
   \(\ETT + \AC \vdash \EM_=\).
 \end{theorem}
 \begin{proof}
-  \todo[inline]{Do}
+  Let \(x, y \co A\) and define the type
+  \(
+    I \coloneqq \sum_{z \co A} \trunc[\big]{ \Id_A(z, x) + \Id_A(z, y) }
+  \)
+  and the function \(s \coloneqq \copair{x, y} \co 2 \to I\).
+  
+  We show that \(s\) is surjective. 
+  Given \((z, p) \co I\) we want to show that the fiber over it is merely inhabited.
+  Thus, we can assume that we have an element of \(\Id_A(z, x) + \Id_A(z, y)\).
+  Without loss of generality, assume we have an element of \(\Id_A(z, x)\).
+  Hence, \(z = x\) by induction and an element in the fiber over \((z, p)\) is \(0 \co A\).
+
+  By \(\AC\) the function \(s\) splits.
+  Hence, \(I\) is a retract of \(2\) and therefore finite and in particular either of cardinality \(1\) or \(2\).
+  If \(I \cong 1\) then \(s(x)\) and \(s(y)\) are equal.
+  If \(I \cong 2\) then \(s(x)\) and \(s(y)\) cannot be equal since this would imply that \(s\) is not injective, but it must be bijective.
 \end{proof}
 
 
@@ -479,7 +494,7 @@ These universes are not separated since the functorial actions on \(n < m\) is g
     \arrow["\varepsilon"', from=4-2, to=4-4]
   \end{tikzcd}\]
   The left square is a pullback and the universe \(\dot{\U}_{\separated} \to \U_{\separated}\) lays in \(\cat{E}\).
-  Furthermore, the above components of the counit are epi.
+  Furthermore, the above components of the counit are epimorphisms.
 \end{construction}
 \begin{proof}
   The right face of the cube is a pullback square by definition.
