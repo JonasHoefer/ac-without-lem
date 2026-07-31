@@ -2,26 +2,68 @@
 
 module CwF where
 
-open import Agda.Primitive
+open import Agda.Primitive hiding (Prop)
 open import Agda.Builtin.Equality.Rewrite
 open import Data.Unit
+open import Data.Nat using (ℕ; zero; suc)
 open import Data.Empty
 open import Data.Product
-open import Data.Sum
+open import Data.Sum renaming (map to map-⊎)
 open import Relation.Binary.PropositionalEquality hiding ([_])
+open ≡-Reasoning
 open import Relation.Nullary.Negation
 
-private
-  variable ℓ ℓ' ℓ'' ℓ''' : Level
+private variable ℓ ℓ' ℓ'' ℓ''' ℓ'''' : Level
 
 record Lift {i} j (A : Set i) : Set (i ⊔ j) where
   constructor ↑
-  field
-    ↓ : A
+  field ↓ : A
 open Lift
 
 is-prop : Set ℓ → Set ℓ
 is-prop A = (x y : A) → x ≡ y
+
+is-prop-⊤ : is-prop ⊤
+is-prop-⊤ _ _ = refl
+
+record Prop (ℓ : Level) : Set (lsuc ℓ) where
+  no-eta-equality
+  pattern
+  constructor  _,_
+  field
+    P : Set ℓ
+    prop : is-prop P
+
+⟨_⟩ : Prop ℓ → Set ℓ
+⟨ A , _ ⟩ = A
+
+prop : (P : Prop ℓ) → is-prop ⟨ P ⟩
+prop (_ , p) = p
+
+Liftᵖ : (ℓ' : Level) → Prop ℓ → Prop (ℓ ⊔ ℓ')
+Liftᵖ ℓ' P = Lift ℓ' ⟨ P ⟩ , λ (↑ x) (↑ y) → cong ↑ (prop P x y)
+
+pair⁼ : {A : Set ℓ} {B : A → Set ℓ'} {a₀ a₁ : A} (α : a₀ ≡ a₁) {b₀ : B a₀} {b₁ : B a₁} → subst B α b₀ ≡ b₁ → _≡_ {A = Σ A B} (a₀ , b₀) (a₁ , b₁)
+pair⁼ refl refl = refl
+
+Σᵖ : (A : Prop ℓ) (B : ⟨ A ⟩ → Prop ℓ') → Prop (ℓ ⊔ ℓ')
+Σᵖ A B = (Σ[ a ∈ ⟨ A ⟩ ] ⟨ B a ⟩) , λ (a₀ , b₀) (a₁ , b₁) → pair⁼ (prop A a₀ a₁) (prop (B a₁) (subst (λ a → ⟨ B a ⟩) (prop A a₀ a₁) b₀) b₁)
+
+_×ᵖ_ : (A : Prop ℓ) (B : Prop ℓ') → Prop (ℓ ⊔ ℓ')
+A ×ᵖ B = Σᵖ A (λ _ → B)
+
+⊤ᵖ : Prop ℓ
+⊤ᵖ = Lift _ ⊤ , λ _ _ → refl
+
+⊥ᵖ : Prop ℓ
+⊥ᵖ = Lift _ ⊥ , λ ()
+
+postulate FE : {A : Set ℓ} {B : A → Set ℓ'} {f g : (x : A) → B x} → ((x : A) → f x ≡ g x) → f ≡ g
+
+Πᵖ : (A : Set ℓ) (B : A → Prop ℓ') → Prop (ℓ ⊔ ℓ')
+Πᵖ A B = ((a : A) → ⟨ B a ⟩) , λ f g → FE λ x → prop (B x) (f x) (g x)
+
+syntax Πᵖ A (λ x → B) = Πᵖ[ x ∈ A ] B
 
 postulate
   ∥_∥ : Set ℓ → Set ℓ
@@ -30,18 +72,27 @@ postulate
   elim-∥∥ : {A : Set ℓ} {P : ∥ A ∥ → Set ℓ'} → ((u : ∥ A ∥) → is-prop (P u)) → ((a : A) → P (η a)) → (u : ∥ A ∥) → P u
   elim-∥∥-β : {A : Set ℓ} {P : ∥ A ∥ → Set ℓ'} {p : (u : ∥ A ∥) → is-prop (P u)} {f : (a : A) → P (η a)} {a : A} → elim-∥∥ p f (η a) ≡ f a
 
+∥_∥ᵖ : Set ℓ → Prop ℓ
+∥ A ∥ᵖ = ∥ A ∥ , is-prop-∥∥
+
 rec-∥∥ : {A : Set ℓ} (P : Set ℓ') → is-prop P → (A → P) → ∥ A ∥ → P
 rec-∥∥ P p f u = elim-∥∥ (λ u₁ → p) f u
 
 {-# REWRITE elim-∥∥-β #-}
 
--- We assume choice in the style of a Hilbert ε-operator
+-- choice as Hilbert style ε-operator
 postulate ac : {A : Set ℓ} → ∥ A ∥ → A
 
 postulate em : (P : Set ℓ) → is-prop P → P ⊎ ¬ P
 
 uip : {A : Set ℓ} {a₀ a₁ : A} (p₀ p₁ : a₀ ≡ a₁) → p₀ ≡ p₁
 uip refl refl = refl
+
+substd : {A : Set ℓ} {P : A → Set ℓ'} (Q : (a : A) → P a → Set ℓ'') {a₀ a₁ : A} (α : a₀ ≡ a₁) (p₀ : P a₀) (q₀ : Q a₀ p₀) → Q a₁ (subst P α p₀)
+substd Q refl p₀ q₀ = q₀
+
+congd : {A : Set ℓ} {P : A → Set ℓ'} {Q : Set ℓ''} (f : (a : A) (p : P a) → Q) {a₀ a₁ : A} (α : a₀ ≡ a₁) {p₀ : P a₀} {p₁ : P a₁} → subst P α p₀ ≡ p₁ → f a₀ p₀ ≡ f a₁ p₁
+congd f refl refl = refl
 
 
 --------------------------------------------------------------------------------
@@ -51,7 +102,7 @@ record Cxt (ℓ : Level) : Set (lsuc ℓ) where
   constructor _◁_
   field
     S : Set ℓ
-    P : S → Set ℓ -- should be thought of as a proposition; maybe we have to actually make it one (it is needed for reflection)
+    P : S → Prop ℓ
 open Cxt
 
 private
@@ -62,13 +113,14 @@ private
     Ρ : Cxt ℓ'''
 
 ∙ : Cxt lzero
-∙ = ⊤ ◁ (λ _ → ⊤)
+∙ .S = ⊤
+∙ .P _ = ⊤ , is-prop-⊤
 
 record Sub (Γ : Cxt ℓ) (Δ : Cxt ℓ') : Set (ℓ ⊔ ℓ') where
   constructor _◁_
   field
     S : Γ .S → Δ .S
-    P : (γ : Γ .Cxt.S) → Γ .P γ → Δ .P (S γ)
+    P : (γ : Γ .Cxt.S) → ⟨ Γ .P γ ⟩ → ⟨ Δ .P (S γ) ⟩
 open Sub
 
 private
@@ -77,14 +129,16 @@ private
     τ : Sub Θ Δ
 
 id : Sub Γ Γ
-id = (λ z → z) ◁ (λ γ z → z)
+id .S γ = γ
+id .P γ γᵖ = γᵖ
 
 infixr 5 _∘_
 _∘_ : Sub Δ Γ → Sub Θ Δ → Sub Θ Γ
 (σ ◁ σᵖ) ∘ (τ ◁ τᵖ) = (λ z → σ (τ z)) ◁ (λ γ z → σᵖ (τ γ) (τᵖ γ z))
 
 ε : Sub Γ ∙
-ε = (λ _ → tt) ◁ (λ γ _ → tt)
+ε .S _ = tt
+ε .P _ _ = tt
 
 εη : {σ : Sub Γ ∙} → σ ≡ ε
 εη = refl
@@ -102,19 +156,23 @@ record Ty (Γ : Cxt ℓ) (ℓ' : Level) : Set (ℓ ⊔ lsuc ℓ') where
   constructor _◁_
   field
     S : Γ .S → Set ℓ'
-    P : (γ : Γ .Cxt.S) → S γ → Set ℓ'
+    P : (γ : Γ .Cxt.S) → S γ → Prop ℓ'
 
 private variable A : Ty Γ ℓ
 
 infixl 3 _▶_
 _▶_ : (Γ : Cxt ℓ) (A : Ty Γ ℓ') → Cxt (ℓ ⊔ ℓ')
-(Γ ◁ Γᴾ) ▶ (A ◁ Aᵖ) = Σ Γ A ◁ (λ (γ , a) → Σ[ γᵖ ∈ Γᴾ γ ] Aᵖ γ a)
+((Γ ◁ Γᴾ) ▶ (A ◁ Aᵖ)) .S = Σ Γ A
+((Γ ◁ Γᴾ) ▶ (A ◁ Aᵖ)) .P (γ , a) = Γᴾ γ ×ᵖ Aᵖ γ a
 
 record Tm (Γ : Cxt ℓ) (A : Ty Γ ℓ') : Set (ℓ ⊔ lsuc ℓ') where
   constructor _◁_
   field
     S : (γ : Γ .S) → A .Ty.S γ
-    P : (γ : Γ .Cxt.S) (γᵖ : Γ .P γ) → A .Ty.P γ (S γ)
+    P : (γ : Γ .Cxt.S) (γᵖ : ⟨ Γ .P γ ⟩) → ⟨ A .Ty.P γ (S γ) ⟩
+
+TmExt : {Γ : Cxt ℓ} {A : Ty Γ ℓ'} (s t : Tm Γ A) → ((γ : Γ .S) → s .Tm.S γ ≡ t . Tm.S γ) → s ≡ t
+TmExt {A = A} s t p = congd _◁_ (FE p) (FE λ γ → FE λ γᵖ → prop (A .Ty.P γ (t .Tm.S γ)) _ (t .Tm.P γ γᵖ))
 
 infix 5 _[_]T
 _[_]T : Ty Γ ℓ → Sub {ℓ'}{ℓ''} Δ Γ → Ty Δ ℓ
@@ -130,30 +188,42 @@ infix 5 _[_]
 _[_] : Tm Γ A → (σ : Sub Δ Γ) → Tm Δ (A [ σ ]T)
 (a ◁ aᵖ) [ σ ◁ σᵖ  ] = (λ γ → a (σ γ)) ◁ (λ γ γᵖ → aᵖ (σ γ) (σᵖ γ γᵖ))
 
+[id] : {Γ : Cxt ℓ} {A : Ty Γ ℓ''} {a : Tm Γ A} → a [ id ] ≡ a
+[id] = refl
+
+[∘] : {a : Tm Γ A} → a [ σ ] [ τ ] ≡ (a [ σ ]) [ τ ]
+[∘] = refl
+
 p : (A : Ty {ℓ} Γ ℓ') → Sub (Γ ▶ A) Γ
 p (A ◁ Aᵖ) = (λ (γ , a) → γ) ◁ (λ (γ , a) (γᵖ , aᵖ) → γᵖ)
 
 q : {Γ : Cxt ℓ} (A : Ty Γ ℓ') → Tm (Γ ▶ A) (A [ p A ]T)
 q (A ◁ Aᵖ) = (λ (γ , a) → a) ◁ (λ (γ , a) (γᵖ , aᵖ) → aᵖ)
 
-qp : {Γ : Cxt ℓ} (A : Ty Γ ℓ') (B : Ty (Γ ▶ A) ℓ'') → Tm (Γ ▶ A ▶ B) (A [ p _ ∘ p _ ]T)
-qp A B = q _ [ p _ ]
+qp : {Γ : Cxt ℓ} (A : Ty Γ ℓ') (B : Ty (Γ ▶ A) ℓ'') → Tm (Γ ▶ A ▶ B) (A [ p A ∘ p B ]T)
+qp A B = q A [ p B ]
+
+pairˢ : {Γ : Cxt ℓ} {Δ : Cxt ℓ'} (σ : Sub Γ Δ) (A : Ty Δ ℓ'')  → Tm {ℓ} {ℓ''} Γ (A [ σ ]T) → Sub Γ (Δ ▶ A)
+pairˢ (σ ◁ σᵖ) A (a ◁ aᵖ) .S γ = σ γ , a γ
+pairˢ (σ ◁ σᵖ) A (a ◁ aᵖ) .P γ γᵖ = σᵖ γ γᵖ , aᵖ γ γᵖ
 
 _,ₛ_ : (σ : Sub Γ Δ) → Tm {ℓ}{ℓ'} Γ (A [ σ ]T) → Sub Γ (Δ ▶ A)
-(σ ◁ σᵖ) ,ₛ (a ◁ aᵖ) = (λ γ → σ γ , a γ) ◁ (λ γ γᵖ → σᵖ γ γᵖ , aᵖ γ γᵖ)
+_,ₛ_ {A = A} σ a = pairˢ σ A a
 
-pβ : {Γ : Cxt ℓ} {Δ : Cxt ℓ'} {A : Ty Γ ℓ''} {σ : Sub Δ Γ} {a : Tm Δ (A [ σ ]T)} → p A ∘ (σ ,ₛ a) ≡ σ
+pβ : {Γ : Cxt ℓ} {Δ : Cxt ℓ'} {A : Ty Γ ℓ''} {σ : Sub Δ Γ} {a : Tm Δ (A [ σ ]T)} → p A ∘ pairˢ σ A a ≡ σ
 pβ = refl
 
-qβ : {Γ : Cxt ℓ} {Δ : Cxt ℓ'} {A : Ty Γ ℓ''} {σ : Sub Δ Γ} {a : Tm Δ (A [ σ ]T)} → q A [ σ ,ₛ a ] ≡ a
+qβ : {Γ : Cxt ℓ} {Δ : Cxt ℓ'} {A : Ty Γ ℓ''} {σ : Sub Δ Γ} {a : Tm Δ (A [ σ ]T)} → q A [ pairˢ σ A a ] ≡ a
 qβ = refl
+
+liftˢ : (σ : Sub Δ Γ) (A : Ty Γ ℓ'') → Sub (Δ ▶ A [ σ ]T) (Γ ▶ A)
+liftˢ σ A = pairˢ (σ ∘ p (A [ σ ]T)) A (q (A [ σ ]T))
 
 ,ₛη : (p A ,ₛ q A) ≡ id
 ,ₛη = refl
 
-,ₛ∘ : {Γ : Cxt ℓ} {Δ : Cxt ℓ'} {Θ : Cxt ℓ''} {A : Ty Γ ℓ'''} {σ : Sub Δ Γ} {τ : Sub Θ Δ} {a : Tm Δ (A [ σ ]T)} → ((_,ₛ_ {A = A} σ a) ∘ τ) ≡ ((σ ∘ τ) ,ₛ (a [ τ ]))
+,ₛ∘ : {Γ : Cxt ℓ} {Δ : Cxt ℓ'} {Θ : Cxt ℓ''} {A : Ty Γ ℓ'''} {σ : Sub Δ Γ} {τ : Sub Θ Δ} {a : Tm Δ (A [ σ ]T)} → (pairˢ σ A a ∘ τ) ≡ (pairˢ (σ ∘ τ) A (a [ τ ]))
 ,ₛ∘ = refl
-
 
 --------------------------------------------------------------------------------
 ---- Universes
@@ -162,14 +232,25 @@ qβ = refl
 -- we still get a Coquand style universe since we redefined the presheaf of types to be represented by U
 
 U : (ℓ : Level) → Ty Γ (lsuc ℓ)
-U ℓ .Ty.S γ = Σ[ A ∈ Set ℓ ] (A → Set ℓ) -- same here; maybe this should be prop
-U ℓ .Ty.P γ (A , Aᵖ) = Lift (lsuc ℓ) ⊤
+U ℓ .Ty.S γ = Σ[ A ∈ Set ℓ ] (A → Prop ℓ)
+U ℓ .Ty.P γ (A , Aᵖ) = ⊤ᵖ
+
+U[] : {σ : Sub Δ Γ} {ℓ : Level} → U ℓ [ σ ]T ≡ U ℓ
+U[] = refl
 
 El : Tm Γ (U ℓ) → Ty Γ ℓ
-El (A ◁ _) = (λ γ → A γ .proj₁) ◁ (λ γ a → A γ .proj₂ a)
+El (A ◁ _) .Ty.S γ = A γ .proj₁
+El (A ◁ _) .Ty.P γ a = A γ .proj₂ a
+
+El[] : {σ : Sub Δ Γ} {ℓ : Level} {A : Tm Γ (U ℓ)} → El A [ σ ]T ≡ El (A [ σ ])
+El[] = refl
 
 code : Ty Γ ℓ → Tm Γ (U ℓ)
-code (A ◁ Aᵖ) = (λ γ → A γ , λ a → Aᵖ γ a) ◁ (λ γ γᵖ → ↑ tt)
+code (A ◁ Aᵖ) .Tm.S γ = A γ , Aᵖ γ
+code (A ◁ Aᵖ) .Tm.P γ γᵖ = ↑ tt
+
+code[] : {σ : Sub Δ Γ} {A : Ty Γ ℓ''} → code A [ σ ] ≡ code (A [ σ ]T)
+code[] = refl
 
 Elcode : {A : Ty Γ ℓ} → El (code A) ≡ A
 Elcode = refl
@@ -183,7 +264,10 @@ codeEl = refl
 
 Pi : (A : Ty Γ ℓ') → Ty (Γ ▶ A) ℓ'' → Ty Γ (ℓ' ⊔ ℓ'')
 Pi (A ◁ Aᵖ) (B ◁ Bᵖ) .Ty.S γ = (a : A γ) → B (γ , a)
-Pi (A ◁ Aᵖ) (B ◁ Bᵖ) .Ty.P γ f = (a : A γ) → Aᵖ γ a → Bᵖ (γ , a) (f a)
+Pi (A ◁ Aᵖ) (B ◁ Bᵖ) .Ty.P γ f = Πᵖ[ a ∈ A γ ] Πᵖ[ _ ∈ ⟨ Aᵖ γ a ⟩ ] Bᵖ (γ , a) (f a)
+
+Pi[] : {σ : Sub Δ Γ} {A : Ty Γ ℓ'} {B : Ty (Γ ▶ A) ℓ''} → Pi A B [ σ ]T ≡ Pi (A [ σ ]T) (B [ liftˢ σ A ]T)
+Pi[] = refl
 
 Fun : (A : Ty Γ ℓ') → Ty Γ ℓ'' → Ty Γ (ℓ' ⊔ ℓ'')
 Fun A B = Pi A (B [ p A ]T)
@@ -196,10 +280,10 @@ App : {A : Ty Γ ℓ'} {B : Ty (Γ ▶ A) ℓ''} → Tm Γ (Pi A B) → Tm (Γ �
 App (f ◁ fᵖ) .Tm.S (γ , a) = f γ a
 App (f ◁ fᵖ) .Tm.P (γ , a) (γᵖ , aᵖ) = fᵖ γ γᵖ a aᵖ
 
-Piβ : {A : Ty Γ ℓ'} {B : Ty (Γ ▶ A) ℓ''} (b : Tm (Γ ▶ A) B) → App (Lam b) ≡ b
-Piβ b = refl
+Piβ : {A : Ty Γ ℓ'} {B : Ty (Γ ▶ A) ℓ''} {b : Tm (Γ ▶ A) B} → (App {A = A} {B = B} (Lam {A = A} {B = B} b)) ≡ b
+Piβ = refl
 
-Piη : {A : Ty Γ ℓ'} {B : Ty (Γ ▶ A) ℓ''} (f : Tm Γ (Pi A B)) → Lam (App {A = A} {B = B} f) ≡ f -- maybe no-eta on type?
+Piη : {A : Ty Γ ℓ'} {B : Ty (Γ ▶ A) ℓ''} (f : Tm Γ (Pi A B)) → Lam {A = A} {B = B} (App {A = A} {B = B} f) ≡ f
 Piη b = refl
 
 
@@ -208,40 +292,47 @@ Piη b = refl
 
 Sg : (A : Ty Γ ℓ') → Ty (Γ ▶ A) ℓ'' → Ty Γ (ℓ' ⊔ ℓ'')
 Sg (A ◁ Aᵖ) (B ◁ Bᵖ) .Ty.S γ = Σ[ a ∈ A γ ] B (γ , a)
-Sg (A ◁ Aᵖ) (B ◁ Bᵖ) .Ty.P γ (a , b) = Aᵖ γ a × Bᵖ (γ , a) b
+Sg (A ◁ Aᵖ) (B ◁ Bᵖ) .Ty.P γ (a , b) = Aᵖ γ a ×ᵖ Bᵖ (γ , a) b
 
-Fst : {A : Ty Γ ℓ'} {B : Ty (Γ ▶ A) ℓ''} → Tm Γ (Sg A B) → Tm Γ A
-Fst (w ◁ wᵖ) .Tm.S γ = w γ .proj₁
-Fst (w ◁ wᵖ) .Tm.P γ γᵖ = wᵖ γ γᵖ .proj₁
+module _ (A : Ty Γ ℓ') (B : Ty (Γ ▶ A) ℓ'') where
+  Pair : (a : Tm Γ A) → Tm Γ (B [ id ,ₛ a ]T) → Tm Γ (Sg A B)
+  Pair a b .Tm.S γ = a .Tm.S γ , b .Tm.S γ
+  Pair a b .Tm.P γ γᵖ = a .Tm.P γ γᵖ , b .Tm.P γ γᵖ
 
-Snd : {A : Ty Γ ℓ'} {B : Ty (Γ ▶ A) ℓ''} (w : Tm Γ (Sg A B)) → Tm Γ (B [ id ,ₛ Fst w ]T)
-Snd (w ◁ wᵖ) .Tm.S γ = w γ .proj₂
-Snd (w ◁ wᵖ) .Tm.P γ γᵖ = wᵖ γ γᵖ .proj₂
+  Fst : Tm Γ (Sg A B) → Tm Γ A
+  Fst (w ◁ wᵖ) .Tm.S γ = w γ .proj₁
+  Fst (w ◁ wᵖ) .Tm.P γ γᵖ = wᵖ γ γᵖ .proj₁
 
-Pair : {A : Ty Γ ℓ'} {B : Ty (Γ ▶ A) ℓ''} (a : Tm Γ A) → Tm Γ (B [ id ,ₛ a ]T) → Tm Γ (Sg A B)
-Pair a b .Tm.S γ = a .Tm.S γ , b .Tm.S γ
-Pair a b .Tm.P γ γᵖ = a .Tm.P γ γᵖ , b .Tm.P γ γᵖ
+  Snd : (w : Tm Γ (Sg A B)) → Tm Γ (B [ pairˢ id A (Fst w) ]T)
+  Snd (w ◁ wᵖ) .Tm.S γ = w γ .proj₂
+  Snd (w ◁ wᵖ) .Tm.P γ γᵖ = wᵖ γ γᵖ .proj₂
+
+  Sgη : {w : Tm Γ (Sg A B)} → Pair (Fst w) (Snd w) ≡ w
+  Sgη = refl
+
+  Fstβ : {a : Tm Γ A} {b : Tm Γ (B [ id ,ₛ a ]T)} → Fst (Pair a b) ≡ a
+  Fstβ = refl
+
+  Sndβ : {a : Tm Γ A} {b : Tm Γ (B [ id ,ₛ a ]T)} → Snd (Pair a b) ≡ b
+  Sndβ = refl
 
 
 --------------------------------------------------------------------------------
 ---- Id
 
-Id : (A : Ty Γ ℓ') (u v : Tm Γ A) → Ty Γ ℓ'
-Id A (u ◁ _) (v ◁ _) .Ty.S γ = (u γ ≡ v γ)
-Id A (u ◁ _) (v ◁ _) .Ty.P γ _ = Lift _ ⊤
+Id : (A : Ty Γ ℓ') (s t : Tm Γ A) → Ty Γ ℓ'
+Id A (s ◁ _) (t ◁ _) .Ty.S γ = (s γ ≡ t γ)
+Id A (s ◁ _) (t ◁ _) .Ty.P γ _ = ⊤ᵖ
+
+Id[] : {σ : Sub Δ Γ} {A : Ty Γ ℓ'} {u v : Tm Γ A} → Id A u v [ σ ]T ≡ Id (A [ σ ]T) (u [ σ ]) (v [ σ ])
+Id[] = refl
 
 Refl : (t : Tm Γ A) → Tm Γ (Id A t t)
-Refl t = (λ γ → refl) ◁ (λ γ γᵖ → ↑ tt)
+Refl t .Tm.S γ    = refl
+Refl t .Tm.P γ γᵖ = ↑ tt
 
-substd : {A : Set ℓ} {P : A → Set ℓ'} (Q : (a : A) → P a → Set ℓ'') {a₀ a₁ : A} (α : a₀ ≡ a₁) (p₀ : P a₀) (q₀ : Q a₀ p₀) → Q a₁ (subst P α p₀)
-substd Q refl p₀ q₀ = q₀
-
-Tr : (A : Ty Γ ℓ') (P : Ty (Γ ▶ A) ℓ'') (t₀ t₁ : Tm Γ A) (t : Tm Γ (Id A t₀ t₁)) → Tm Γ (P [ id ,ₛ t₀ ]T) → Tm Γ (P [ id ,ₛ t₁ ]T)
-Tr (A ◁ Aᵖ) (P ◁ Pᵖ) (t₀ ◁ t₀ᵖ) (t₁ ◁ t₁ᵖ) (t ◁ tᵖ) (u ◁ uᵖ) .Tm.S γ = subst (λ tᵢ → P (γ , tᵢ)) (t γ) (u γ)
-Tr (A ◁ Aᵖ) (P ◁ Pᵖ) (t₀ ◁ t₀ᵖ) (t₁ ◁ t₁ᵖ) (t ◁ tᵖ) (u ◁ uᵖ) .Tm.P γ γᵖ = substd (λ a → Pᵖ (γ , a)) (t γ) (u γ) (uᵖ γ γᵖ)
-
-Trβ : (A : Ty Γ ℓ') (P : Ty (Γ ▶ A) ℓ'') (t : Tm Γ A) (u : Tm Γ (P [ id ,ₛ t ]T)) → Tr A P t t (Refl t) u ≡ u
-Trβ A P t u = refl
+Refl[] : {σ : Sub Δ Γ} {A : Ty Γ ℓ''} {t : Tm Γ A} → Refl t [ σ ] ≡ Refl (t [ σ ])
+Refl[] = refl
 
 UIP : (A : Ty Γ ℓ') (a₀ a₁ : Tm Γ A) (p₀ p₁ : Tm Γ (Id A a₀ a₁)) → Tm Γ (Id (Id A a₀ a₁) p₀ p₁)
 UIP A a₀ a₁ p₀ p₁ .Tm.S γ = uip (p₀ .Tm.S γ) (p₁ .Tm.S γ)
@@ -251,13 +342,24 @@ UIP[] : {Γ : Cxt ℓ} {Δ : Cxt ℓ'} {σ : Sub Δ Γ} {A : Ty Γ ℓ''} {a₀ 
   UIP A a₀ a₁ p₀ p₁ [ σ ] ≡ UIP (A [ σ ]T) (a₀ [ σ ]) (a₁ [ σ ]) (p₀ [ σ ]) (p₁ [ σ ])
 UIP[] = refl
 
+-- equality reflection is sufficient to derive the remaining structure
+ER : (A : Ty Γ ℓ') (s t : Tm Γ A) → Tm Γ (Id A s t) → s ≡ t
+ER A s t (p ◁ pᵖ) = TmExt s t p
+
+-- Tr : {Γ : Cxt ℓ} (A : Ty Γ ℓ') (P : Ty (Γ ▶ A) ℓ'') (t₀ t₁ : Tm Γ A) (t : Tm Γ (Id A t₀ t₁)) → Tm Γ (P [ id ,ₛ t₀ ]T) → Tm Γ (P [ id ,ₛ t₁ ]T)
+-- Tr (A ◁ Aᵖ) (P ◁ Pᵖ) (t₀ ◁ t₀ᵖ) (t₁ ◁ t₁ᵖ) (t ◁ tᵖ) (u ◁ uᵖ) .Tm.S γ = subst (λ tᵢ → P (γ , tᵢ)) (t γ) (u γ)
+-- Tr (A ◁ Aᵖ) (P ◁ Pᵖ) (t₀ ◁ t₀ᵖ) (t₁ ◁ t₁ᵖ) (t ◁ tᵖ) (u ◁ uᵖ) .Tm.P γ γᵖ = substd (λ a p → ⟨ Pᵖ (γ , a) p ⟩) (t γ) (u γ) (uᵖ γ γᵖ)
+--
+-- Trβ : {Γ : Cxt ℓ} {A : Ty Γ ℓ'} {P : Ty (Γ ▶ A) ℓ''} {t : Tm Γ A} {u : Tm Γ (P [ id ,ₛ t ]T)} → Tr A P t t (Refl t) u ≡ u
+-- Trβ = refl
+
 
 --------------------------------------------------------------------------------
 ---- Trunc
 
 Trunc : (A : Ty Γ ℓ') → Ty Γ ℓ'
 Trunc (A ◁ Aᵖ) .Ty.S γ = ∥ A γ ∥
-Trunc (A ◁ Aᵖ) .Ty.P γ _ = Σ[ a ∈ A γ ] Aᵖ γ a -- ∥ Σ[ a ∈ A γ ] Aᵖ γ a ∥
+Trunc (A ◁ Aᵖ) .Ty.P γ _ = ∥ Σ[ a ∈ A γ ] ⟨ Aᵖ γ a ⟩ ∥ᵖ
 -- In the fibred point of view we just send A₀ ↣ A₁ to ∥A₀∥ ↣ ∥A₁∥
 -- In the indexed point of view we have to give the fibre of this map over a point.
 -- But given a point, the type ∥A₁∥ is contractible so we can can give the total space instead.
@@ -268,91 +370,167 @@ Trunc-prop A u v .Tm.P γ γᵖ = ↑ tt
 
 Inc : {A : Ty Γ ℓ'} → Tm Γ A → Tm Γ (Trunc A)
 Inc u .Tm.S γ = η (u .Tm.S γ)
-Inc u .Tm.P γ γᵖ = u .Tm.S γ , u .Tm.P γ γᵖ
+Inc u .Tm.P γ γᵖ = η (u .Tm.S γ , u .Tm.P γ γᵖ)
 
--- ElimTrunc : {A : Ty Γ ℓ'} {Q : Ty Γ ℓ''} →
---   Tm (Γ ▶ Q ▶ Q [ p _ ]T) (Id (Q [ p _ ∘ p _ ]T) (qp _ _) (q _)) →
---   Tm (Γ ▶ A) (Q [ p _ ]T) →
---   Tm (Γ ▶ Trunc A) (Q [ p _ ]T)
--- ElimTrunc {Q = Q} is-prop-Q f .Tm.S (γ , u) = rec-∥∥ (Q .Ty.S γ) (λ x y → is-prop-Q .Tm.S ((γ , x) , y)) (λ a → f .Tm.S (γ , a)) u
--- ElimTrunc is-prop-Q f .Tm.P (γ , a) (γᵖ , aᵖ) = {!!}
+RecTrunc : {A : Ty Γ ℓ'} {Q : Ty Γ ℓ''} →
+  Tm (Γ ▶ Q ▶ Q [ p Q ]T) (Id (Q [ p Q ∘ p (Q [ p Q ]T) ]T) (qp Q (Q [ p Q ]T)) (q (Q [ p Q ]T))) →
+  Tm (Γ ▶ A) (Q [ p A ]T) →
+  Tm (Γ ▶ Trunc A) (Q [ p (Trunc A) ]T)
+RecTrunc {Q = Q ◁ Qᵖ} is-prop-Q f .Tm.S (γ , a) = rec-∥∥ (Q γ) (λ x y → is-prop-Q .Tm.S ((γ , x) , y)) (λ a → f .Tm.S (γ , a)) a
+RecTrunc {Γ = Γ} {A = A ◁ Aᵖ} {Q = Q ◁ Qᵖ} is-prop-Q f .Tm.P (γ , a) (γᵖ , aᵖ) = rec-∥∥ ⟨ Qᵖ γ v ⟩ (prop (Qᵖ γ v)) lem aᵖ
+  where
+    v : Q γ
+    v = RecTrunc {Γ = Γ} {A = A ◁ Aᵖ} {Q = Q ◁ Qᵖ} is-prop-Q f .Tm.S (γ , a)
 
-module InternalChoice where
-  AC' : {A : Ty Γ ℓ'} → Tm Γ (Trunc A) → Tm Γ A
-  AC' {Γ = (Γ ◁ Γᵖ)} {A = Aᵗ@(A ◁ Aᵖ)} u = ( λ γ → lem' γ .proj₁) ◁ (λ γ γᵖ → lem' γ .proj₂ γᵖ)
-    where
-      lem : (γ : Γ) → (Trunc Aᵗ) .Ty.S γ → (Γᵖ γ → (Σ[ a ∈ A γ ] Aᵖ γ a)) → ∥ Γᵖ γ ∥ ⊎ ¬ ∥ Γᵖ γ ∥  → Σ[ a ∈ A γ ] (Γᵖ γ → Aᵖ γ a)
-      lem γ u v =
-        [ (λ ∥Γᵖ∥ → let w = v (ac ∥Γᵖ∥) in w .proj₁ , λ _ → w .proj₂)
-        , (λ ¬∥Γᵖ∥ → ac u , λ γᵖ → ⊥-elim (¬∥Γᵖ∥ (η γᵖ)))
-        ]
+    u : (a : A γ) → f .Tm.S (γ , a) ≡ v
+    u a = is-prop-Q .Tm.S ((γ , f .Tm.S (γ , a)) , _)
 
-      lem' : (γ : Γ) → Σ[ a ∈ A γ ] (Γᵖ γ → Aᵖ γ a)
-      lem' γ = lem γ (u .Tm.S γ) (u .Tm.P γ) (em ∥ Γᵖ γ ∥ is-prop-∥∥)
+    lem : (Σ[ a ∈ A γ ] ⟨ Aᵖ γ a ⟩) → ⟨ Qᵖ γ v ⟩
+    lem (a , aᵖ) = subst (λ v → ⟨ Qᵖ γ v ⟩) (u a) (f .Tm.P (γ , a) (γᵖ , aᵖ))
 
-  -- We get a choice function for each universe (note that we do not have to show any stability!)
-  AC-U : (ℓ : Level) → Tm (∙ ▶ U ℓ ▶ Trunc (El (q (U ℓ)))) (El (qp _ _))
-  AC-U ℓ = AC' (q _)
+RecTrunc[] : {Γ : Cxt ℓ} {Δ : Cxt ℓ'} {σ : Sub Δ Γ} {A : Ty Γ ℓ''} {Q : Ty Γ ℓ'''}
+  {is-prop-Q : Tm (Γ ▶ Q ▶ Q [ p Q ]T) (Id (Q [ p Q ∘ p (Q [ p Q ]T) ]T) (qp Q (Q [ p Q ]T)) (q (Q [ p Q ]T)))} {f : Tm (Γ ▶ A) (Q [ p A ]T)} →
+    RecTrunc {Γ = Γ} {A = A} is-prop-Q f [ liftˢ σ (Trunc A) ] ≡ RecTrunc {Γ = Δ} {A = A [ σ ]T} (is-prop-Q [ liftˢ (liftˢ σ Q) (Q [ p Q ]T) ]) (f [ liftˢ σ A ])
+RecTrunc[] = refl
 
-  AC : {A : Ty Γ ℓ'} → Tm Γ (Trunc A) → Tm Γ A
-  AC {ℓ' = ℓ'} {A = A} u = AC-U ℓ' [ (ε ,ₛ code A) ,ₛ u ]
+-- we produce an element ε of type A : U, _ : ∥ El A ∥ ⊢ ε : El A
+AC-cxt : (ℓ : Level) → Cxt (lsuc ℓ)
+AC-cxt ℓ = ∙ ▶ U ℓ ▶ Trunc (El (q {Γ = ∙} (U ℓ)))
 
-  AC[] : {Γ : Cxt ℓ} {Δ : Cxt ℓ'} {σ : Sub Δ Γ} {A : Ty Γ ℓ''} (u : Tm Γ (Trunc A)) → AC u [ σ ] ≡ AC (u [ σ ])
-  AC[] _ = refl
-open InternalChoice using (AC; AC[])
+AC-U : (ℓ : Level) → Tm (AC-cxt ℓ) (El (qp {Γ = ∙} (U ℓ) (Trunc (El (q {Γ = ∙} (U ℓ))))))
+AC-U ℓ = (λ ((tt , A) , u) → lem' A u .proj₁) ◁ (λ ((tt , A) , u) ((tt , ↑ tt) , w) → lem' A u .proj₂ w)
+  where
+    lem : ((A , Aᵖ) : Σ[ A ∈ Set ℓ ] (A → Prop ℓ)) → ∥ A ∥ → ∥ (Σ[ a' ∈ A ] ⟨ Aᵖ a' ⟩) ∥ ⊎ ¬ ∥ (Σ[ a' ∈ A ] ⟨ Aᵖ a' ⟩) ∥ → Σ[ a ∈ A ] (∥ (Σ[ a' ∈ A ] ⟨ Aᵖ a' ⟩) ∥ → ⟨ Aᵖ a ⟩)
+    lem (A , Aᵖ) u (inj₁ v) = let (a , aᵖ) = ac v in a , λ _ → aᵖ
+    lem (A , Aᵖ) u (inj₂ v) = ac u , λ x → ⊥-elim (v x)
+
+    lem' : ((A , Aᵖ) : Σ[ A ∈ Set ℓ ] (A → Prop ℓ)) → ∥ A ∥ → Σ[ a ∈ A ] (∥ (Σ[ a' ∈ A ] ⟨ Aᵖ a' ⟩) ∥ → ⟨ Aᵖ a ⟩)
+    lem' (A , Aᵖ) u = lem (A , Aᵖ) u (em ∥ (Σ[ a' ∈ A ] ⟨ Aᵖ a' ⟩) ∥ is-prop-∥∥)
+
+AC : {ℓ ℓ' : Level} {Γ : Cxt ℓ} (A : Ty Γ ℓ') → Tm Γ (Trunc A) → Tm Γ A
+AC {ℓ = ℓ} {ℓ' = ℓ'} {Γ = Γ} A u = AC-U ℓ' [ s ]
+  where
+    s : Sub Γ (AC-cxt ℓ')
+    s .S γ = (tt , A .Ty.S γ , A .Ty.P γ) , u .Tm.S γ
+    s .P γ γᵖ = (tt , ↑ tt) , u .Tm.P γ γᵖ
+
+AC[] : {Γ : Cxt ℓ} {Δ : Cxt ℓ'} {σ : Sub Δ Γ} {A : Ty Γ ℓ''} {u : Tm Γ (Trunc A)} → AC A u [ σ ] ≡ AC (A [ σ ]T) (u [ σ ])
+AC[] = refl
+
 
 --------------------------------------------------------------------------------
 ---- Empty
 
 𝟘 : Ty Γ lzero
 𝟘 .Ty.S γ = ⊥
-𝟘 .Ty.P γ ()
+𝟘 .Ty.P γ = ⊥-elim
+
+𝟘[] : {Γ : Cxt ℓ} {Δ : Cxt ℓ'} {σ : Sub Δ Γ} → 𝟘 [ σ ]T ≡ 𝟘
+𝟘[] = refl
+
+Elim𝟘 : (Q : Ty (Γ ▶ 𝟘) ℓ) → Tm (Γ ▶ 𝟘) Q
+Elim𝟘 Q .Tm.S (γ , u) = ⊥-elim u
+Elim𝟘 Q .Tm.P γ γᵖ = ⊥-elim (γ .proj₂)
+
+Elim𝟘[] : {Γ : Cxt ℓ} {Δ : Cxt ℓ'} {σ : Sub Δ Γ} {Q : Ty (Γ ▶ 𝟘) ℓ} → Elim𝟘 {Γ = Γ} Q [ liftˢ σ 𝟘 ] ≡ Elim𝟘 {Γ = Δ} (Q [ liftˢ σ 𝟘 ]T)
+Elim𝟘[] = refl
 
 
 --------------------------------------------------------------------------------
 ---- Coprod
 
-Sum : (A : Ty Γ ℓ') (B : Ty Γ ℓ'') → Ty Γ (ℓ' ⊔ ℓ'')
+Sum : {Γ : Cxt ℓ} (A : Ty Γ ℓ') (B : Ty Γ ℓ'') → Ty Γ (ℓ' ⊔ ℓ'')
 Sum (A ◁ Aᵖ) (B ◁ Bᵖ) .Ty.S γ = A γ ⊎ B γ
-Sum {ℓ' = ℓ'} {ℓ'' = ℓ''} (A ◁ Aᵖ) (B ◁ Bᵖ) .Ty.P γ = [ (λ a → Lift ℓ'' (Aᵖ γ a)) , (λ b → Lift ℓ' (Bᵖ γ b)) ]
+Sum {ℓ' = ℓ'} {ℓ'' = ℓ''} (A ◁ Aᵖ) (B ◁ Bᵖ) .Ty.P γ = [ (λ a → Liftᵖ ℓ'' (Aᵖ γ a)) , (λ b → Liftᵖ ℓ' (Bᵖ γ b)) ]
 
 Sum[] : {Γ : Cxt ℓ} {Δ : Cxt ℓ'} {σ : Sub Δ Γ} {A : Ty Γ ℓ''} {B : Ty Γ ℓ'''} →
   Sum A B [ σ ]T ≡ Sum (A [ σ ]T) (B [ σ ]T)
 Sum[] = refl
 
-Inj1 : {A : Ty Γ ℓ'} {B : Ty Γ ℓ''} → Tm Γ A → Tm Γ (Sum A B)
-Inj1 (u ◁ uᵖ) .Tm.S γ = inj₁ (u γ)
-Inj1 (u ◁ uᵖ) .Tm.P γ γᵖ = ↑ (uᵖ γ γᵖ)
+module _ {Γ : Cxt ℓ} (A : Ty Γ ℓ'') (B : Ty Γ ℓ''') where
+  Inj1 : Tm Γ A → Tm Γ (Sum A B)
+  Inj1 (u ◁ uᵖ) .Tm.S γ = inj₁ (u γ)
+  Inj1 (u ◁ uᵖ) .Tm.P γ γᵖ = ↑ (uᵖ γ γᵖ)
 
-Inj2 : {A : Ty Γ ℓ'} {B : Ty Γ ℓ''} → Tm Γ B → Tm Γ (Sum A B)
-Inj2 (u ◁ uᵖ) .Tm.S γ = inj₂ (u γ)
-Inj2 (u ◁ uᵖ) .Tm.P γ γᵖ = ↑ (uᵖ γ γᵖ)
+  Inj2 : Tm Γ B → Tm Γ (Sum A B)
+  Inj2 (u ◁ uᵖ) .Tm.S γ = inj₂ (u γ)
+  Inj2 (u ◁ uᵖ) .Tm.P γ γᵖ = ↑ (uᵖ γ γᵖ)
 
-Inj1ˢ : {A : Ty Γ ℓ'} {B : Ty Γ ℓ''} → Sub (Γ ▶ A) (Γ ▶ Sum A B)
-Inj1ˢ {A = A} = p A ,ₛ Inj1 (q A)
+module _ {Γ : Cxt ℓ} {Δ : Cxt ℓ'} {σ : Sub Δ Γ} (A : Ty Γ ℓ'') (B : Ty Γ ℓ''') where
+  Inj1[] : {a : Tm Γ A} → Inj1 A B a [ σ ] ≡ Inj1 (A [ σ ]T) (B [ σ ]T) (a [ σ ])
+  Inj1[] = refl
 
-Inj2ˢ : {A : Ty Γ ℓ'} {B : Ty Γ ℓ''} → Sub (Γ ▶ B) (Γ ▶ Sum A B)
-Inj2ˢ {B = B} = p B ,ₛ Inj2 (q B)
+  Inj2[] : {b : Tm Γ B} → Inj2 A B b [ σ ] ≡ Inj2 (A [ σ ]T) (B [ σ ]T) (b [ σ ])
+  Inj2[] = refl
 
-ElimSum : (A : Ty Γ ℓ') (B : Ty Γ ℓ'') (Q : Ty (Γ ▶ Sum A B) ℓ''') →
-  Tm (Γ ▶ A) (Q [ Inj1ˢ ]T) → Tm (Γ ▶ B) (Q [ Inj2ˢ ]T) → Tm (Γ ▶ Sum A B) Q
-ElimSum A B Q u v .Tm.S (γ , inj₁ a) = u .Tm.S (γ , a)
-ElimSum A B Q u v .Tm.S (γ , inj₂ b) = v .Tm.S (γ , b)
-ElimSum A B Q u v .Tm.P (γ , inj₁ a) (γᵖ , ↑ aᵖ) = u .Tm.P (γ , a) (γᵖ , aᵖ)
-ElimSum A B Q u v .Tm.P (γ , inj₂ b) (γᵖ , ↑ bᵖ) = v .Tm.P (γ , b) (γᵖ , bᵖ)
+module _ {Γ : Cxt ℓ} (A : Ty Γ ℓ'') (B : Ty Γ ℓ''') where
+  Inj1ˢ : Sub (Γ ▶ A) (Γ ▶ Sum A B)
+  Inj1ˢ = pairˢ (p A) (Sum A B) (Inj1 (A [ p A ]T) (B [ p A ]T) (q A))
+
+  Inj2ˢ : Sub (Γ ▶ B) (Γ ▶ Sum A B)
+  Inj2ˢ = pairˢ (p B) (Sum A B) (Inj2 (A [ p B ]T) (B [ p B ]T) (q B))
+
+  ElimSum : (Q : Ty (Γ ▶ Sum A B) ℓ'''') → Tm (Γ ▶ A) (Q [ Inj1ˢ ]T) → Tm (Γ ▶ B) (Q [ Inj2ˢ ]T) → (w : Tm Γ (Sum A B)) → Tm Γ (Q [ id ,ₛ w ]T)
+  ElimSum (Q ◁ Qᵖ) s t w .Tm.S γ =
+    [_,_] {C = λ w → Q (γ , w)} (λ a → s .Tm.S (γ , a)) (λ b → t .Tm.S (γ , b)) (w .Tm.S γ)
+  ElimSum (Q ◁ Qᵖ) s t w .Tm.P γ γᵖ =
+    [_,_]
+      {C = λ u → (v : ⟨ Sum A B .Ty.P γ u ⟩) → ⟨ Qᵖ (γ , u) ([_,_] {C = λ w → Q (γ , w)} (λ a → s .Tm.S (γ , a)) (λ b → t .Tm.S (γ , b)) u) ⟩}
+      (λ a aᵖ → s .Tm.P (γ , a) (γᵖ , aᵖ .↓))
+      (λ b bᵖ → t .Tm.P (γ , b) (γᵖ , bᵖ .↓))
+      (w .Tm.S γ)
+      (w .Tm.P γ γᵖ)
+
+  ElimSumInj1 : {Q : Ty (Γ ▶ Sum A B) ℓ''''} {u : Tm (Γ ▶ A) (Q [ Inj1ˢ ]T)} {v : Tm (Γ ▶ B) (Q [ Inj2ˢ ]T)} {a : Tm Γ A} →
+    ElimSum Q u v (Inj1 A B a) ≡ u [ id ,ₛ a ]
+  ElimSumInj1 = refl
+
+  ElimSumInj2 : {Q : Ty (Γ ▶ Sum A B) ℓ''''} {u : Tm (Γ ▶ A) (Q [ Inj1ˢ ]T)} {v : Tm (Γ ▶ B) (Q [ Inj2ˢ ]T)} {b : Tm Γ B} →
+    ElimSum Q u v (Inj2 A B b) ≡ v [ id ,ₛ b ]
+  ElimSumInj2 = refl
+
+module _ {Γ : Cxt ℓ} {Δ : Cxt ℓ'} {σ : Sub Δ Γ} {A : Ty Γ ℓ''} {B : Ty Γ ℓ'''} where
+  ElimSum[] : {Q : Ty (Γ ▶ Sum A B) ℓ''''} {u : Tm (Γ ▶ A) (Q [ Inj1ˢ A B ]T)} {v : Tm (Γ ▶ B) (Q [ Inj2ˢ A B ]T)} {w : Tm Γ (Sum A B)} →
+    ElimSum A B Q u v w [ σ ] ≡ ElimSum (A [ σ ]T) (B [ σ ]T) (Q [ liftˢ σ (Sum A B) ]T) (u [ liftˢ σ A ]) (v [ liftˢ σ B ]) (w [ σ ])
+  ElimSum[] = refl
+
+--------------------------------------------------------------------------------
+---- ℕ
+
+Nat : Ty Γ lzero
+Nat .Ty.S γ = ℕ
+Nat .Ty.P γ n = ⊤ᵖ
+
+Zero : Tm Γ Nat
+Zero .Tm.S γ = zero
+Zero .Tm.P γ γᵖ = ↑ tt
+
+Suc : Tm Γ Nat → Tm Γ Nat
+Suc (n ◁ nᵖ) .Tm.S γ = suc (n γ)
+Suc (n ◁ nᵖ) .Tm.P γ γᵖ = ↑ tt
+
+
 
 
 --------------------------------------------------------------------------------
----- LEM shit
+---- Excluded middle
 
-TG : Ty ∙ lzero
-TG .Ty.S γ = ⊤
-TG .Ty.P γ γᵖ = ⊥
+⊤-🔫 : (ℓ : Level) → Ty ∙ ℓ
+⊤-🔫 ℓ .Ty.S γ = Lift ℓ ⊤
+⊤-🔫 ℓ .Ty.P γ γᵖ = ⊥ᵖ
 
--- LEM cannot be inhabited since it would yield a term of the following type
-TG-not-dec : Tm ∙ (Sum TG (Fun TG 𝟘)) → ⊥
-TG-not-dec (u ◁ uᵖ) = lem (u tt) (uᵖ tt tt)
+⊤-🔫-not-dec : (ℓ : Level) → Tm ∙ (Sum (⊤-🔫 ℓ) (Fun (⊤-🔫 ℓ) 𝟘)) → ⊥
+⊤-🔫-not-dec ℓ (u ◁ uᵖ) = lem (u tt) (uᵖ tt tt)
   where
-    lem : (w : TG .Ty.S tt ⊎ Fun TG 𝟘 .Ty.S tt) → Sum TG (Fun TG 𝟘) .Ty.P tt w → ⊥
-    lem (inj₁ tt) (↑ p) = p
-    lem (inj₂ u)  _     = u tt
+    lem : (w : ⊤-🔫 ℓ .Ty.S tt ⊎ Fun (⊤-🔫 ℓ) 𝟘 .Ty.S tt) → ⟨ Sum (⊤-🔫 ℓ) (Fun (⊤-🔫 ℓ) 𝟘) .Ty.P tt w ⟩ → ⊥
+    lem (inj₁ (↑ tt)) (↑ p) = p .↓
+    lem (inj₂ u)      _     = u (↑ tt)
+
+EM-Ty : (ℓ : Level) → Ty (∙ ▶ U ℓ) ℓ
+EM-Ty ℓ = Sum (El (q {Γ = ∙} (U ℓ))) (Fun (El (q {Γ = ∙} (U ℓ))) 𝟘)
+
+not-EM : (ℓ : Level) → ¬ Tm (∙ ▶ U ℓ) (EM-Ty ℓ)
+not-EM ℓ t = ⊤-🔫-not-dec ℓ EM-⊤-🔫
+  where
+    EM-⊤-🔫 : Tm ∙ (EM-Ty ℓ [ pairˢ ε (U ℓ) (code (⊤-🔫 ℓ)) ]T)
+    EM-⊤-🔫 = t [ pairˢ ε (U ℓ) (code (⊤-🔫 ℓ)) ]
