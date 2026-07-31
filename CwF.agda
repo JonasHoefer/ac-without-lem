@@ -1,11 +1,15 @@
+{-# OPTIONS --rewriting #-}
+
 module CwF where
 
 open import Agda.Primitive
+open import Agda.Builtin.Equality.Rewrite
 open import Data.Unit
 open import Data.Empty
 open import Data.Product
 open import Data.Sum
 open import Relation.Binary.PropositionalEquality hiding ([_])
+open import Relation.Nullary.Negation
 
 private
   variable ℓ ℓ' ℓ'' ℓ''' : Level
@@ -15,6 +19,33 @@ record Lift {i} j (A : Set i) : Set (i ⊔ j) where
   field
     ↓ : A
 open Lift
+
+is-prop : Set ℓ → Set ℓ
+is-prop A = (x y : A) → x ≡ y
+
+postulate
+  ∥_∥ : Set ℓ → Set ℓ
+  η : {A : Set ℓ} → A → ∥ A ∥
+  is-prop-∥∥ : {A : Set ℓ} → is-prop ∥ A ∥
+  elim-∥∥ : {A : Set ℓ} {P : ∥ A ∥ → Set ℓ'} → ((u : ∥ A ∥) → is-prop (P u)) → ((a : A) → P (η a)) → (u : ∥ A ∥) → P u
+  elim-∥∥-β : {A : Set ℓ} {P : ∥ A ∥ → Set ℓ'} {p : (u : ∥ A ∥) → is-prop (P u)} {f : (a : A) → P (η a)} {a : A} → elim-∥∥ p f (η a) ≡ f a
+
+rec-∥∥ : {A : Set ℓ} (P : Set ℓ') → is-prop P → (A → P) → ∥ A ∥ → P
+rec-∥∥ P p f u = elim-∥∥ (λ u₁ → p) f u
+
+{-# REWRITE elim-∥∥-β #-}
+
+-- We assume choice in the style of a Hilbert ε-operator
+postulate ac : {A : Set ℓ} → ∥ A ∥ → A
+
+postulate em : (P : Set ℓ) → is-prop P → P ⊎ ¬ P
+
+uip : {A : Set ℓ} {a₀ a₁ : A} (p₀ p₁ : a₀ ≡ a₁) → p₀ ≡ p₁
+uip refl refl = refl
+
+
+--------------------------------------------------------------------------------
+---- Basic CwF structure
 
 record Cxt (ℓ : Level) : Set (lsuc ℓ) where
   constructor _◁_
@@ -105,6 +136,9 @@ p (A ◁ Aᵖ) = (λ (γ , a) → γ) ◁ (λ (γ , a) (γᵖ , aᵖ) → γᵖ)
 q : {Γ : Cxt ℓ} (A : Ty Γ ℓ') → Tm (Γ ▶ A) (A [ p A ]T)
 q (A ◁ Aᵖ) = (λ (γ , a) → a) ◁ (λ (γ , a) (γᵖ , aᵖ) → aᵖ)
 
+qp : {Γ : Cxt ℓ} (A : Ty Γ ℓ') (B : Ty (Γ ▶ A) ℓ'') → Tm (Γ ▶ A ▶ B) (A [ p _ ∘ p _ ]T)
+qp A B = q _ [ p _ ]
+
 _,ₛ_ : (σ : Sub Γ Δ) → Tm {ℓ}{ℓ'} Γ (A [ σ ]T) → Sub Γ (Δ ▶ A)
 (σ ◁ σᵖ) ,ₛ (a ◁ aᵖ) = (λ γ → σ γ , a γ) ◁ (λ γ γᵖ → σᵖ γ γᵖ , aᵖ γ γᵖ)
 
@@ -125,7 +159,7 @@ qβ = refl
 ---- Universes
 
 -- This is different from the exceptional thing!
--- we still get a Coquand style universe since we redfined the presheaf of types to be represented by U
+-- we still get a Coquand style universe since we redefined the presheaf of types to be represented by U
 
 U : (ℓ : Level) → Ty Γ (lsuc ℓ)
 U ℓ .Ty.S γ = Σ[ A ∈ Set ℓ ] (A → Set ℓ) -- same here; maybe this should be prop
@@ -162,11 +196,31 @@ App : {A : Ty Γ ℓ'} {B : Ty (Γ ▶ A) ℓ''} → Tm Γ (Pi A B) → Tm (Γ �
 App (f ◁ fᵖ) .Tm.S (γ , a) = f γ a
 App (f ◁ fᵖ) .Tm.P (γ , a) (γᵖ , aᵖ) = fᵖ γ γᵖ a aᵖ
 
-Πβ : {A : Ty Γ ℓ'} {B : Ty (Γ ▶ A) ℓ''} (b : Tm (Γ ▶ A) B) → App (Lam b) ≡ b
-Πβ b = refl
+Piβ : {A : Ty Γ ℓ'} {B : Ty (Γ ▶ A) ℓ''} (b : Tm (Γ ▶ A) B) → App (Lam b) ≡ b
+Piβ b = refl
 
-Πη : {A : Ty Γ ℓ'} {B : Ty (Γ ▶ A) ℓ''} (f : Tm Γ (Pi A B)) → Lam (App {A = A} {B = B} f) ≡ f -- maybe no-eta on type?
-Πη b = refl
+Piη : {A : Ty Γ ℓ'} {B : Ty (Γ ▶ A) ℓ''} (f : Tm Γ (Pi A B)) → Lam (App {A = A} {B = B} f) ≡ f -- maybe no-eta on type?
+Piη b = refl
+
+
+--------------------------------------------------------------------------------
+---- Σ
+
+Sg : (A : Ty Γ ℓ') → Ty (Γ ▶ A) ℓ'' → Ty Γ (ℓ' ⊔ ℓ'')
+Sg (A ◁ Aᵖ) (B ◁ Bᵖ) .Ty.S γ = Σ[ a ∈ A γ ] B (γ , a)
+Sg (A ◁ Aᵖ) (B ◁ Bᵖ) .Ty.P γ (a , b) = Aᵖ γ a × Bᵖ (γ , a) b
+
+Fst : {A : Ty Γ ℓ'} {B : Ty (Γ ▶ A) ℓ''} → Tm Γ (Sg A B) → Tm Γ A
+Fst (w ◁ wᵖ) .Tm.S γ = w γ .proj₁
+Fst (w ◁ wᵖ) .Tm.P γ γᵖ = wᵖ γ γᵖ .proj₁
+
+Snd : {A : Ty Γ ℓ'} {B : Ty (Γ ▶ A) ℓ''} (w : Tm Γ (Sg A B)) → Tm Γ (B [ id ,ₛ Fst w ]T)
+Snd (w ◁ wᵖ) .Tm.S γ = w γ .proj₂
+Snd (w ◁ wᵖ) .Tm.P γ γᵖ = wᵖ γ γᵖ .proj₂
+
+Pair : {A : Ty Γ ℓ'} {B : Ty (Γ ▶ A) ℓ''} (a : Tm Γ A) → Tm Γ (B [ id ,ₛ a ]T) → Tm Γ (Sg A B)
+Pair a b .Tm.S γ = a .Tm.S γ , b .Tm.S γ
+Pair a b .Tm.P γ γᵖ = a .Tm.P γ γᵖ , b .Tm.P γ γᵖ
 
 
 --------------------------------------------------------------------------------
@@ -189,9 +243,6 @@ Tr (A ◁ Aᵖ) (P ◁ Pᵖ) (t₀ ◁ t₀ᵖ) (t₁ ◁ t₁ᵖ) (t ◁ tᵖ) 
 Trβ : (A : Ty Γ ℓ') (P : Ty (Γ ▶ A) ℓ'') (t : Tm Γ A) (u : Tm Γ (P [ id ,ₛ t ]T)) → Tr A P t t (Refl t) u ≡ u
 Trβ A P t u = refl
 
-uip : {A : Set ℓ} {a₀ a₁ : A} (p₀ p₁ : a₀ ≡ a₁) → p₀ ≡ p₁
-uip refl refl = refl
-
 UIP : (A : Ty Γ ℓ') (a₀ a₁ : Tm Γ A) (p₀ p₁ : Tm Γ (Id A a₀ a₁)) → Tm Γ (Id (Id A a₀ a₁) p₀ p₁)
 UIP A a₀ a₁ p₀ p₁ .Tm.S γ = uip (p₀ .Tm.S γ) (p₁ .Tm.S γ)
 UIP A a₀ a₁ p₀ p₁ .Tm.P γ γᵖ = ↑ tt
@@ -200,6 +251,55 @@ UIP[] : {Γ : Cxt ℓ} {Δ : Cxt ℓ'} {σ : Sub Δ Γ} {A : Ty Γ ℓ''} {a₀ 
   UIP A a₀ a₁ p₀ p₁ [ σ ] ≡ UIP (A [ σ ]T) (a₀ [ σ ]) (a₁ [ σ ]) (p₀ [ σ ]) (p₁ [ σ ])
 UIP[] = refl
 
+
+--------------------------------------------------------------------------------
+---- Trunc
+
+Trunc : (A : Ty Γ ℓ') → Ty Γ ℓ'
+Trunc (A ◁ Aᵖ) .Ty.S γ = ∥ A γ ∥
+Trunc (A ◁ Aᵖ) .Ty.P γ _ = Σ[ a ∈ A γ ] Aᵖ γ a -- ∥ Σ[ a ∈ A γ ] Aᵖ γ a ∥
+-- In the fibred point of view we just send A₀ ↣ A₁ to ∥A₀∥ ↣ ∥A₁∥
+-- In the indexed point of view we have to give the fibre of this map over a point.
+-- But given a point, the type ∥A₁∥ is contractible so we can can give the total space instead.
+
+Trunc-prop : (A : Ty Γ ℓ') (u v : Tm Γ (Trunc A)) → Tm Γ (Id (Trunc A) u v)
+Trunc-prop A u v .Tm.S γ = is-prop-∥∥ (u .Tm.S γ) (v .Tm.S γ)
+Trunc-prop A u v .Tm.P γ γᵖ = ↑ tt
+
+Inc : {A : Ty Γ ℓ'} → Tm Γ A → Tm Γ (Trunc A)
+Inc u .Tm.S γ = η (u .Tm.S γ)
+Inc u .Tm.P γ γᵖ = u .Tm.S γ , u .Tm.P γ γᵖ
+
+-- ElimTrunc : {A : Ty Γ ℓ'} {Q : Ty Γ ℓ''} →
+--   Tm (Γ ▶ Q ▶ Q [ p _ ]T) (Id (Q [ p _ ∘ p _ ]T) (qp _ _) (q _)) →
+--   Tm (Γ ▶ A) (Q [ p _ ]T) →
+--   Tm (Γ ▶ Trunc A) (Q [ p _ ]T)
+-- ElimTrunc {Q = Q} is-prop-Q f .Tm.S (γ , u) = rec-∥∥ (Q .Ty.S γ) (λ x y → is-prop-Q .Tm.S ((γ , x) , y)) (λ a → f .Tm.S (γ , a)) u
+-- ElimTrunc is-prop-Q f .Tm.P (γ , a) (γᵖ , aᵖ) = {!!}
+
+module InternalChoice where
+  AC' : {A : Ty Γ ℓ'} → Tm Γ (Trunc A) → Tm Γ A
+  AC' {Γ = (Γ ◁ Γᵖ)} {A = Aᵗ@(A ◁ Aᵖ)} u = ( λ γ → lem' γ .proj₁) ◁ (λ γ γᵖ → lem' γ .proj₂ γᵖ)
+    where
+      lem : (γ : Γ) → (Trunc Aᵗ) .Ty.S γ → (Γᵖ γ → (Σ[ a ∈ A γ ] Aᵖ γ a)) → ∥ Γᵖ γ ∥ ⊎ ¬ ∥ Γᵖ γ ∥  → Σ[ a ∈ A γ ] (Γᵖ γ → Aᵖ γ a)
+      lem γ u v =
+        [ (λ ∥Γᵖ∥ → let w = v (ac ∥Γᵖ∥) in w .proj₁ , λ _ → w .proj₂)
+        , (λ ¬∥Γᵖ∥ → ac u , λ γᵖ → ⊥-elim (¬∥Γᵖ∥ (η γᵖ)))
+        ]
+
+      lem' : (γ : Γ) → Σ[ a ∈ A γ ] (Γᵖ γ → Aᵖ γ a)
+      lem' γ = lem γ (u .Tm.S γ) (u .Tm.P γ) (em ∥ Γᵖ γ ∥ is-prop-∥∥)
+
+  -- We get a choice function for each universe (note that we do not have to show any stability!)
+  AC-U : (ℓ : Level) → Tm (∙ ▶ U ℓ ▶ Trunc (El (q (U ℓ)))) (El (qp _ _))
+  AC-U ℓ = AC' (q _)
+
+  AC : {A : Ty Γ ℓ'} → Tm Γ (Trunc A) → Tm Γ A
+  AC {ℓ' = ℓ'} {A = A} u = AC-U ℓ' [ (ε ,ₛ code A) ,ₛ u ]
+
+  AC[] : {Γ : Cxt ℓ} {Δ : Cxt ℓ'} {σ : Sub Δ Γ} {A : Ty Γ ℓ''} (u : Tm Γ (Trunc A)) → AC u [ σ ] ≡ AC (u [ σ ])
+  AC[] _ = refl
+open InternalChoice using (AC; AC[])
 
 --------------------------------------------------------------------------------
 ---- Empty
@@ -250,8 +350,8 @@ TG .Ty.S γ = ⊤
 TG .Ty.P γ γᵖ = ⊥
 
 -- LEM cannot be inhabited since it would yield a term of the following type
-not-LEM : Tm ∙ (Sum TG (Fun TG 𝟘)) → ⊥
-not-LEM (u ◁ uᵖ) = lem (u tt) (uᵖ tt tt)
+TG-not-dec : Tm ∙ (Sum TG (Fun TG 𝟘)) → ⊥
+TG-not-dec (u ◁ uᵖ) = lem (u tt) (uᵖ tt tt)
   where
     lem : (w : TG .Ty.S tt ⊎ Fun TG 𝟘 .Ty.S tt) → Sum TG (Fun TG 𝟘) .Ty.P tt w → ⊥
     lem (inj₁ tt) (↑ p) = p
