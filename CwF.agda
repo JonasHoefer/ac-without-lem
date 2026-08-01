@@ -6,7 +6,7 @@
 --   I think this construction is different since he mentions that choice holds since ∃ is interpreted as Σ
 -- - https://www.math.nagoya-u.ac.jp/~garrigue/papers/modelccomega-mscs2023.pdf
 --   Sato and Garrigue build a model of CC^ω (i.e. CIC without inductive types and without Prop ⊆ Type)
---   They mention that in their construction the interpretation of Prop and Type is too different to incorperate this rule.
+--   They mention that in their construction the interpretation of Prop and Type is too different to incorporate this rule.
 --   (They interpret Type in context Γ as Γ → U for a meta-universe U while interpreting Prop in context Γ as Γ → 𝓞(X) for an Alexandroff space X)
 -- - the skeleton of this formalization is based on https://github.com/AndrasKovacs/antifunext/blob/main/Model.agda by András Kovács
 --
@@ -20,9 +20,9 @@
 -- In particular, we validate equality reflection, meaning that strict propositions and homotopy propositions collapse in this model.
 -- We can therefore simply define propositions as homotopy propositions.
 -- This model is impredicative in the sense that it satisfies propositional resizing: every proposition is logically equivalent to one in the lowest universe.
--- We do not address strict cumulativity of universes (although we should inherit it from the meta-theory).
+-- We do not address strict cumulatively of universes (although we should inherit it from the meta-theory).
 --
--- Note that this model does not satisfy propositional exensionality.
+-- Note that this model does not satisfy propositional extensionality.
 -- In the context with the type (1, λₓ.0) the propositions (1, λₓ.0) and (1, λₓ.1) imply each other but are not equal.
 
 module CwF where
