@@ -20,6 +20,9 @@
 -- In particular, we validate equality reflection, meaning that strict propositions and homotopy propositions collapse in this model.
 -- We can therefore simply define propositions as homotopy propositions.
 -- We do not address strict cumulativity of universes (although we should inherit it from the meta-theory).
+--
+-- Note that this model does not satisfy propositional exensionality.
+-- In the context with the type (1, λₓ.0) the propositions (1, λₓ.0) and (1, λₓ.1) imply each other but are not equal.
 
 module CwF where
 
@@ -61,8 +64,14 @@ record Prop (ℓ : Level) : Set (lsuc ℓ) where
     P : Set ℓ
     prop : is-prop P
 
+Prop₀ : Set₁
+Prop₀ = Prop lzero
+
 ⟨_⟩ : Prop ℓ → Set ℓ
 ⟨ A , _ ⟩ = A
+
+_↔_ : Prop ℓ → Prop ℓ' → Set (ℓ ⊔ ℓ')
+P ↔ Q = (⟨ P ⟩ → ⟨ Q ⟩) × (⟨ Q ⟩ → ⟨ P ⟩)
 
 prop : (P : Prop ℓ) → is-prop ⟨ P ⟩
 prop (_ , p) = p
@@ -121,7 +130,7 @@ substd Q refl p₀ q₀ = q₀
 congd : {A : Set ℓ} {P : A → Set ℓ'} {Q : Set ℓ''} (f : (a : A) (p : P a) → Q) {a₀ a₁ : A} (α : a₀ ≡ a₁) {p₀ : P a₀} {p₁ : P a₁} → subst P α p₀ ≡ p₁ → f a₀ p₀ ≡ f a₁ p₁
 congd f refl refl = refl
 
-resize : (P : Prop ℓ) → Σ[ Q ∈ Prop lzero ] ((⟨ P ⟩ → ⟨ Q ⟩) × (⟨ Q ⟩ → ⟨ P ⟩))
+resize : (P : Prop ℓ) → Σ[ Q ∈ Prop₀ ] (P ↔ Q)
 resize (P , P-prop) with em P P-prop
 ... | inj₁ p = ⊤ᵖ , (λ _ → ↑ tt) , (λ _ → p)
 ... | inj₂ ¬p = ⊥ᵖ , (λ z → ↑ (¬p z)) , λ ()
@@ -337,6 +346,9 @@ module Sigma where
   Sg[] : {Γ : Cxt ℓ} {Δ : Cxt ℓ'} {σ : Sub Δ Γ} {A : Ty Γ ℓ''} {B : Ty (Γ ▶ A) ℓ'''} → Sg A B [ σ ]T ≡ Sg (A [ σ ]T) (B [ liftˢ σ A ]T)
   Sg[] = refl
 
+  Prod : (A : Ty Γ ℓ') (B : Ty Γ ℓ'') → Ty Γ (ℓ' ⊔ ℓ'')
+  Prod A B = Sg A (B [ p A ]T)
+
   module _ (A : Ty Γ ℓ') (B : Ty (Γ ▶ A) ℓ'') where
     Pair : (a : Tm Γ A) → Tm Γ (B [ id ,ₛ a ]T) → Tm Γ (Sg A B)
     Pair a b .Tm.S γ = a .Tm.S γ , b .Tm.S γ
@@ -368,7 +380,7 @@ module Sigma where
 
     Snd[] : {w : Tm Γ (Sg A B)} → Snd A B w [ σ ] ≡ Snd (A [ σ ]T) (B [ liftˢ σ A ]T) (w [ σ ])
     Snd[] = refl
-open Sigma using (Sg; Pair; Fst; Snd)
+open Sigma using (Sg; Pair; Fst; Snd; Prod)
 
 
 --------------------------------------------------------------------------------
@@ -431,6 +443,7 @@ module Identity where
   Idη : (A : Ty Γ ℓ') (s t : Tm Γ A) → Tm Γ (Id A s t) → s ≡ t
   Idη A s t (p ◁ pᵖ) = TmExt s t p
 open Identity using (Id; Refl)
+
 
 --------------------------------------------------------------------------------
 ---- Trunc
@@ -711,3 +724,57 @@ module NoExcludedMiddle where
 
 --------------------------------------------------------------------------------
 --- Resizing
+
+module Resizing where
+  IsProp : Ty Γ ℓ → Ty Γ ℓ
+  IsProp A = Pi A (Pi (A [ p A ]T) (Id (A [ p A ∘ p (A [ p A ]T) ]T) (qp A (A [ p A ]T)) (q (A [ p A ]T))))
+
+  U₀ : Ty Γ (lsuc lzero)
+  U₀ = U lzero
+
+  BiImpl : (A : Ty Γ ℓ') (B : Ty Γ ℓ'') → Ty Γ (ℓ' ⊔ ℓ'')
+  BiImpl A B = Prod (Fun A B) (Fun B A)
+
+  Resize : {ℓ : Level} {Γ : Cxt ℓ} → Ty Γ ℓ' → Ty Γ (ℓ' ⊔ lsuc lzero)
+  Resize {Γ = Γ} A = Sg U₀ (BiImpl (A [ p U₀ ]T) (El (q {Γ = Γ} U₀)))
+
+  CxtRS : (ℓ : Level) → Cxt (lsuc ℓ)
+  CxtRS ℓ = ∙ ▶ U ℓ ▶ IsProp (El (q {Γ = ∙} (U ℓ)))
+
+  CxtRSCode : (ℓ : Level) → Tm (CxtRS ℓ) (U ℓ)
+  CxtRSCode ℓ = qp {Γ = ∙} (U ℓ) (IsProp (El (q {Γ = ∙} (U ℓ))))
+
+  CxtRSType : (ℓ : Level) → Ty (CxtRS ℓ) ℓ
+  CxtRSType ℓ = El (CxtRSCode ℓ)
+
+  RS-lemma : (ℓ : Level) (A : Prop ℓ) (Aᵖ : ⟨ A ⟩ → Prop ℓ) →
+    Σ[ B ∈ Prop₀ ] Σ[ p ∈ A ↔ B ] Σ[ Bᵖ ∈ (⟨ B ⟩ → Prop₀) ]
+      (((a : ⟨ A ⟩) → ⟨ Aᵖ a ⟩ → ⟨ Bᵖ (p .proj₁ a) ⟩) × ((b : ⟨ B ⟩) → ⟨ Bᵖ b ⟩ → ⟨ Aᵖ (p .proj₂ b) ⟩))
+  RS-lemma ℓ A Aᵖ = B , B' .proj₂ , Bᵖ , fwd' , (λ b → Bᵖ' b .proj₂ .proj₂)
+    where
+      B' : Σ[ B ∈ Prop₀ ] (A ↔ B)
+      B' = resize A
+
+      B : Prop₀
+      B = B' .proj₁
+
+      fwd : ⟨ A ⟩ → ⟨ B ⟩
+      fwd = B' .proj₂ .proj₁
+
+      bwd : ⟨ B ⟩ → ⟨ A ⟩
+      bwd = B' .proj₂ .proj₂
+
+      Bᵖ' : (b : ⟨ B ⟩) → Σ[ Bᵖb ∈ Prop₀ ] (Aᵖ (bwd b) ↔ Bᵖb)
+      Bᵖ' b' = resize (Aᵖ (bwd b'))
+
+      Bᵖ : (b : ⟨ B ⟩) → Prop₀
+      Bᵖ b = Bᵖ' b .proj₁
+
+      fwd' : (a : ⟨ A ⟩) → ⟨ Aᵖ a ⟩ → ⟨ Bᵖ (fwd a) ⟩
+      fwd' a u = Bᵖ' (fwd a) .proj₂ .proj₁ (subst (λ a → ⟨ Aᵖ a ⟩) (prop A a (bwd (fwd a))) u)
+
+  RS : (ℓ : Level) → Tm (CxtRS ℓ) (Resize (CxtRSType ℓ))
+  RS ℓ .Tm.S ((tt , (A , Aᵖ)) , u) with RS-lemma ℓ (A , u) Aᵖ
+  ... | (B , is-prop-B) , (fwd , bwd) , Bᵖ , fwd' , bwd' = (B , Bᵖ) , (fwd , bwd)
+  RS ℓ .Tm.P ((tt , (A , Aᵖ)) , u) γᵖ with RS-lemma ℓ (A , u) Aᵖ
+  ... | (B , is-prop-B) , (fwd , bwd) , Bᵖ , fwd' , bwd' = ↑ tt , fwd' , bwd'
