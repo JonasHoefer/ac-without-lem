@@ -11,7 +11,7 @@
 -- - the skeleton of this formalization is based on https://github.com/AndrasKovacs/antifunext/blob/main/Model.agda by András Kovács
 --
 -- The model formalized here is essentially the Quasitopos ℰ of separated presheaves on {0 < 1} for the topology where 0 covers 1 (i.e. two sets and a mono between them).
--- Types are interpreted slightly unexpectedly: The global sections comonad : □ = Δ∘Γ lands in separated presheaves.
+-- Types are interpreted slightly unexpectedly: The global sections comonad □ = Δ∘Γ lands in separated presheaves.
 -- Hence, for the subuniverse of the Hofmann-Streicher universe on separated presheaves U, the presheaf □U is separated.
 -- Pulling back the universal family yields a universe in ℰ. Concretely, it is given by the constant presheaf on the set of separated presheaves on {0 < 1}.
 -- The presheaf of types is the one represented by U.
@@ -19,6 +19,7 @@
 -- We produce a model of extensional type theory.
 -- In particular, we validate equality reflection, meaning that strict propositions and homotopy propositions collapse in this model.
 -- We can therefore simply define propositions as homotopy propositions.
+-- This model is impredicative in the sense that it satisfies propositional resizing: every proposition is logically equivalent to one in the lowest universe.
 -- We do not address strict cumulativity of universes (although we should inherit it from the meta-theory).
 --
 -- Note that this model does not satisfy propositional exensionality.
