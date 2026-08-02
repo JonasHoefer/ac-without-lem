@@ -3,27 +3,31 @@
 -- Related work:
 -- - van den Berg shows for higher order logic that AC does not imply EM without prop ext
 --   https://web.archive.org/web/20080418230344/http://www.mathematik.tu-darmstadt.de/~berg/papers/diaco.pdf
---   I think this construction is different since he mentions that choice holds since ∃ is interpreted as Σ
 -- - https://www.math.nagoya-u.ac.jp/~garrigue/papers/modelccomega-mscs2023.pdf
---   Sato and Garrigue build a model of CC^ω (i.e. CIC without inductive types and without Prop ⊆ Type)
---   They mention that in their construction the interpretation of Prop and Type is too different to incorporate this rule.
+--   Sato and Garrigue build a model of CC^ω (CIC without inductive types and without Prop ⊆ Type) that satisfies AC and not LEM
+--   They mention that in their construction the interpretations of Prop and Type are too different to incorporate Prop ⊆ Type.
 --   (They interpret Type in context Γ as Γ → U for a meta-universe U while interpreting Prop in context Γ as Γ → 𝓞(X) for an Alexandroff space X)
 -- - the skeleton of this formalization is based on https://github.com/AndrasKovacs/antifunext/blob/main/Model.agda by András Kovács
 --
--- The model formalized here is essentially the Quasitopos ℰ of separated presheaves on {0 < 1} for the topology where 0 covers 1 (i.e. two sets and a mono between them).
--- Types are interpreted slightly unexpectedly: The global sections comonad □ = Δ∘Γ lands in separated presheaves.
--- Hence, for the subuniverse of the Hofmann-Streicher universe on separated presheaves U, the presheaf □U is separated.
--- Pulling back the universal family yields a universe in ℰ. Concretely, it is given by the constant presheaf on the set of separated presheaves on {0 < 1}.
--- The presheaf of types is the one represented by U.
+-- The model formalized here is the Quasitopos ℰ of separated presheaves on {0 < 1} for the topology where 0 covers 1 (i.e. two sets and a mono between them).
+-- Types are interpreted slightly unexpectedly:
+-- The global sections comonad □ = Δ∘Γ lands in separated presheaves.
+-- Hence, for the subuniverse of the Hofmann-Streicher universe on separated presheaves U the presheaf □U is separated.
+-- Pulling back the universal family yields a universe in ℰ.
+-- Concretely, it is given by the constant presheaf on the set of separated presheaves on {0 < 1}.
+-- The presheaf of types is then the one represented by U.
 --
 -- We produce a model of extensional type theory.
 -- In particular, we validate equality reflection, meaning that strict propositions and homotopy propositions collapse in this model.
 -- We can therefore simply define propositions as homotopy propositions.
--- This model is impredicative in the sense that it satisfies propositional resizing: every proposition is logically equivalent to one in the lowest universe.
--- We do not address strict cumulatively of universes (although we should inherit it from the meta-theory).
 --
--- Note that this model does not satisfy propositional extensionality.
--- In the context with the type (1, λₓ.0) the propositions (1, λₓ.0) and (1, λₓ.1) imply each other but are not equal.
+-- For validating additional principles, we assume classical logic in the meta theory.
+-- Then this model satisfies the following:
+-- - Choice: for all types A there is a map ||A|| -> A
+-- - Propositonal resizing: every proposition is logically equivalent to one in the lowest universe
+--
+-- Furthermore, we show that this model does not satisfy excluded middle.
+-- Note that this model does not satisfy propositional extensionality (since together with AC this would imply LEM).
 
 module CwF where
 
