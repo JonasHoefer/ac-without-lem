@@ -704,10 +704,17 @@ module Choice where
 --------------------------------------------------------------------------------
 ---- no excluded middle
 
+IsProp : Ty Γ ℓ → Ty Γ ℓ
+IsProp A = Pi A (Pi (A [ p A ]T) (Id (A [ p A ∘ p (A [ p A ]T) ]T) (qp A (A [ p A ]T)) (q (A [ p A ]T))))
+
 module NoExcludedMiddle where
   TG : (ℓ : Level) → Ty ∙ ℓ
   TG ℓ .Ty.S γ = Lift ℓ ⊤
   TG ℓ .Ty.P γ γᵖ = ⊥ᵖ
+
+  TG-IsProp : (ℓ : Level) → Tm ∙ (IsProp (TG ℓ))
+  TG-IsProp ℓ .Tm.S γ _ _ = refl
+  TG-IsProp ℓ .Tm.P γ γᵖ a a₁ a₂ a₃ = ↑ tt
 
   TG-not-dec : (ℓ : Level) → Tm ∙ (Sum (TG ℓ) (Fun (TG ℓ) 𝟘)) → ⊥
   TG-not-dec ℓ (u ◁ uᵖ) = lem (u tt) (uᵖ tt tt)
@@ -716,23 +723,23 @@ module NoExcludedMiddle where
       lem (inj₁ (↑ tt)) (↑ p) = p .↓
       lem (inj₂ u)      _     = u (↑ tt)
 
-  EM-Ty : (ℓ : Level) → Ty (∙ ▶ U ℓ) ℓ
-  EM-Ty ℓ = Sum (El (q {Γ = ∙} (U ℓ))) (Fun (El (q {Γ = ∙} (U ℓ))) 𝟘)
+  EM-Cxt : (ℓ : Level) → Cxt (lsuc ℓ)
+  EM-Cxt ℓ = ∙ ▶ U ℓ ▶ IsProp (El (q {Γ = ∙} (U ℓ)))
 
-  not-EM : (ℓ : Level) → ¬ Tm (∙ ▶ U ℓ) (EM-Ty ℓ)
-  not-EM ℓ t = TG-not-dec ℓ EM-TG
+  EM-Ty : (ℓ : Level) → Ty (EM-Cxt ℓ) ℓ
+  EM-Ty ℓ = Sum (El (qp {Γ = ∙} (U ℓ) (IsProp (El (q {Γ = ∙} (U ℓ)))))) (Fun (El (qp {Γ = ∙} (U ℓ) (IsProp (El (q {Γ = ∙} (U ℓ)))))) 𝟘)
+
+  not-EM : (ℓ : Level) → ¬ Tm (EM-Cxt ℓ) (EM-Ty ℓ)
+  not-EM ℓ t = TG-not-dec ℓ (t [ TG-Sub ])
     where
-      EM-TG : Tm ∙ (EM-Ty ℓ [ pairˢ ε (U ℓ) (code (TG ℓ)) ]T)
-      EM-TG = t [ pairˢ ε (U ℓ) (code (TG ℓ)) ]
+      TG-Sub : Sub ∙ (EM-Cxt ℓ)
+      TG-Sub = pairˢ (pairˢ ε (U ℓ) (code (TG ℓ))) (IsProp (El (q {Γ = ∙} (U ℓ)))) (TG-IsProp ℓ)
 
 
 --------------------------------------------------------------------------------
 --- Resizing
 
 module Resizing where
-  IsProp : Ty Γ ℓ → Ty Γ ℓ
-  IsProp A = Pi A (Pi (A [ p A ]T) (Id (A [ p A ∘ p (A [ p A ]T) ]T) (qp A (A [ p A ]T)) (q (A [ p A ]T))))
-
   U₀ : Ty Γ (lsuc lzero)
   U₀ = U lzero
 
