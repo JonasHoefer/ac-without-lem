@@ -23,7 +23,7 @@
 --
 -- For validating additional principles, we assume classical logic in the meta theory.
 -- Then this model satisfies the following:
--- - Choice: for all types A there is a map ||A|| -> A
+-- - Choice: for all types A there is a map ∥A∥ → A
 -- - Propositonal resizing: every proposition is logically equivalent to one in the lowest universe
 --
 -- Furthermore, we show that this model does not satisfy excluded middle.
@@ -121,7 +121,6 @@ rec-∥∥ P p f u = elim-∥∥ (λ u₁ → p) f u
 
 {-# REWRITE elim-∥∥-β #-}
 
--- choice as Hilbert style ε-operator
 postulate ac : {A : Set ℓ} → ∥ A ∥ → A
 
 postulate em : (P : Set ℓ) → is-prop P → P ⊎ ¬ P
@@ -706,14 +705,14 @@ module Choice where
 ---- no excluded middle
 
 module NoExcludedMiddle where
-  ⊤-🔫 : (ℓ : Level) → Ty ∙ ℓ
-  ⊤-🔫 ℓ .Ty.S γ = Lift ℓ ⊤
-  ⊤-🔫 ℓ .Ty.P γ γᵖ = ⊥ᵖ
+  TG : (ℓ : Level) → Ty ∙ ℓ
+  TG ℓ .Ty.S γ = Lift ℓ ⊤
+  TG ℓ .Ty.P γ γᵖ = ⊥ᵖ
 
-  ⊤-🔫-not-dec : (ℓ : Level) → Tm ∙ (Sum (⊤-🔫 ℓ) (Fun (⊤-🔫 ℓ) 𝟘)) → ⊥
-  ⊤-🔫-not-dec ℓ (u ◁ uᵖ) = lem (u tt) (uᵖ tt tt)
+  TG-not-dec : (ℓ : Level) → Tm ∙ (Sum (TG ℓ) (Fun (TG ℓ) 𝟘)) → ⊥
+  TG-not-dec ℓ (u ◁ uᵖ) = lem (u tt) (uᵖ tt tt)
     where
-      lem : (w : ⊤-🔫 ℓ .Ty.S tt ⊎ Fun (⊤-🔫 ℓ) 𝟘 .Ty.S tt) → ⟨ Sum (⊤-🔫 ℓ) (Fun (⊤-🔫 ℓ) 𝟘) .Ty.P tt w ⟩ → ⊥
+      lem : (w : TG ℓ .Ty.S tt ⊎ Fun (TG ℓ) 𝟘 .Ty.S tt) → ⟨ Sum (TG ℓ) (Fun (TG ℓ) 𝟘) .Ty.P tt w ⟩ → ⊥
       lem (inj₁ (↑ tt)) (↑ p) = p .↓
       lem (inj₂ u)      _     = u (↑ tt)
 
@@ -721,10 +720,10 @@ module NoExcludedMiddle where
   EM-Ty ℓ = Sum (El (q {Γ = ∙} (U ℓ))) (Fun (El (q {Γ = ∙} (U ℓ))) 𝟘)
 
   not-EM : (ℓ : Level) → ¬ Tm (∙ ▶ U ℓ) (EM-Ty ℓ)
-  not-EM ℓ t = ⊤-🔫-not-dec ℓ EM-⊤-🔫
+  not-EM ℓ t = TG-not-dec ℓ EM-TG
     where
-      EM-⊤-🔫 : Tm ∙ (EM-Ty ℓ [ pairˢ ε (U ℓ) (code (⊤-🔫 ℓ)) ]T)
-      EM-⊤-🔫 = t [ pairˢ ε (U ℓ) (code (⊤-🔫 ℓ)) ]
+      EM-TG : Tm ∙ (EM-Ty ℓ [ pairˢ ε (U ℓ) (code (TG ℓ)) ]T)
+      EM-TG = t [ pairˢ ε (U ℓ) (code (TG ℓ)) ]
 
 
 --------------------------------------------------------------------------------
