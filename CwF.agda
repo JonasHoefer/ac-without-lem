@@ -215,6 +215,10 @@ module CwF where
       S : (γ : Γ .S) → A .Ty.S γ
       P : (γ : Γ .Cxt.S) (γᵖ : ⟨ Γ .P γ ⟩) → ⟨ A .Ty.P γ (S γ) ⟩
 
+  mkTm : {Γ : Cxt ℓ} {A : Ty Γ ℓ'} → ((γ : Γ .Cxt.S) → Σ[ u ∈ A .Ty.S γ ] ((γᵖ : ⟨ Γ .Cxt.P γ ⟩) → ⟨ A .Ty.P γ u ⟩)) → Tm Γ A
+  mkTm w .Tm.S γ = w γ .proj₁
+  mkTm w .Tm.P γ = w γ .proj₂
+
   TmExt : {Γ : Cxt ℓ} {A : Ty Γ ℓ'} (s t : Tm Γ A) → ((γ : Γ .S) → s .Tm.S γ ≡ t . Tm.S γ) → s ≡ t
   TmExt {A = A} s t p = congd _◁_ (FE p) (FE λ γ → FE λ γᵖ → prop (A .Ty.P γ (t .Tm.S γ)) _ (t .Tm.P γ γᵖ))
 
@@ -785,7 +789,14 @@ module Resizing where
       fwd' a u = Bᵖ' (fwd a) .proj₂ .proj₁ (subst (λ a → ⟨ Aᵖ a ⟩) (prop A a (bwd (fwd a))) u)
 
   RS : (ℓ : Level) → Tm (CxtRS ℓ) (Resize (CxtRSType ℓ))
-  RS ℓ .Tm.S ((tt , (A , Aᵖ)) , u) with RS-lemma ℓ (A , u) Aᵖ
-  ... | (B , is-prop-B) , (fwd , bwd) , Bᵖ , fwd' , bwd' = (B , Bᵖ) , (fwd , bwd)
-  RS ℓ .Tm.P ((tt , (A , Aᵖ)) , u) γᵖ with RS-lemma ℓ (A , u) Aᵖ
-  ... | (B , is-prop-B) , (fwd , bwd) , Bᵖ , fwd' , bwd' = ↑ tt , fwd' , bwd'
+  RS ℓ = mkTm λ where
+    ((tt , (A , Aᵖ)) , u) →
+      let ((B , is-prop-B) , (fwd , bwd) , Bᵖ , fwd' , bwd') = RS-lemma ℓ (A , u) Aᵖ
+      in  ((B , Bᵖ) , fwd , bwd) , λ γᵖ → ↑ tt , fwd' , bwd'
+
+--  -- This does not work, is this a bug?
+--  RS' : (ℓ : Level) → Tm (CxtRS ℓ) (Resize (CxtRSType ℓ))
+--  RS' ℓ .Tm.S ((tt , (A , Aᵖ)) , u) with RS-lemma ℓ (A , u) Aᵖ
+--  ... | (B , is-prop-B) , (fwd , bwd) , Bᵖ , fwd' , bwd' = (B , Bᵖ) , (fwd , bwd)
+--  RS' ℓ .Tm.P ((tt , (A , Aᵖ)) , u) with RS-lemma ℓ (A , u) Aᵖ
+--  ... | (B , is-prop-B) , (fwd , bwd) , Bᵖ , fwd' , bwd' = λ γᵖ → ↑ tt , {!fwd'!} , {!!}
