@@ -9,12 +9,13 @@
 --   (They interpret Type in context Γ as Γ → U for a meta-universe U while interpreting Prop in context Γ as Γ → 𝓞(X) for an Alexandroff space X)
 -- - the skeleton of this formalization is based on https://github.com/AndrasKovacs/antifunext/blob/main/Model.agda by András Kovács
 --
--- The model formalized here is the Quasitopos ℰ of separated presheaves on {0 < 1} for the topology where 0 covers 1 (i.e. two sets and a mono between them).
+-- The model formalized here is the Quasitopos ℰ of separated presheaves on {0 < 1} for the topology where 1 covers 0 (i.e. two sets and a mono between them).
 -- Types are interpreted slightly unexpectedly:
 -- The global sections comonad □ = Δ∘Γ lands in separated presheaves.
--- Hence, for the subuniverse of the Hofmann-Streicher universe on separated presheaves U the presheaf □U is separated.
+-- Hence, for the subuniverse of the Hofmann-Streicher universe on separated presheaves U, the presheaf □U is separated.
 -- Pulling back the universal family yields a universe in ℰ.
--- Concretely, it is given by the constant presheaf on the set of separated presheaves on {0 < 1}.
+-- Concretely, it is given by the constant presheaf on the set of separated presheaves on {0 < 1} and for i ∈ {0 < 1} and A a separated presheaf on {0 < 1} the decoding is given by El(i, A) = A(i).
+-- This can be seen as a slightly bloated version of the usual universe where codes at the second stage (1) carry more information than necessary.
 -- The presheaf of types is then the one represented by U.
 --
 -- We produce a model of extensional type theory.
@@ -274,6 +275,7 @@ module CwF where
   ,ₛ∘ = refl
 open CwF
 
+
 --------------------------------------------------------------------------------
 ---- Universes
 
@@ -305,6 +307,7 @@ module Universe where
   codeEl : {A : Tm Γ (U ℓ)} → code (El A) ≡ A
   codeEl = refl
 open Universe using (U; El; code)
+
 
 --------------------------------------------------------------------------------
 ---- Π
@@ -342,6 +345,7 @@ module Pi where
     App[] : {t : Tm Γ (Pi A B)} → App A B t [ liftˢ σ A ] ≡ App (A [ σ ]T) (B [ liftˢ σ A ]T) (t [ σ ])
     App[] = refl
 open Pi using (Pi; Fun; Lam; App)
+
 
 --------------------------------------------------------------------------------
 ---- Σ
@@ -430,6 +434,9 @@ module Identity where
   Centre : (A : Ty Γ ℓ') (a : Tm Γ A) → Tm Γ (Singl A a)
   Centre A a = MkSingl A a a (Refl a)
 
+  Centre[] : {Γ : Cxt ℓ} {Δ : Cxt ℓ'} {σ : Sub Δ Γ} (A : Ty Γ ℓ'') (a : Tm Γ A) → Centre A a [ σ ] ≡ Centre (A [ σ ]T) (a [ σ ])
+  Centre[] A a = refl
+
   ContrSingl : (A : Ty Γ ℓ') (a₀ a₁ : Tm Γ A) (a : Tm Γ (Id A a₀ a₁)) → Tm Γ (Id (Singl A a₀) (Centre A a₀) (MkSingl A a₀ a₁ a))
   ContrSingl A a₀ a₁ a .Tm.S γ = pair⁼ (a .Tm.S γ) (uip _ (a .Tm.S γ))
   ContrSingl A a₀ a₁ a .Tm.P γ γᵖ = ↑ tt
@@ -450,6 +457,8 @@ module Identity where
   -- We even get equality reflection since we requiered the morphism A₀ → A₁ in a type to be fibred in propositions.
   Idη : (A : Ty Γ ℓ') (s t : Tm Γ A) → Tm Γ (Id A s t) → s ≡ t
   Idη A s t (p ◁ pᵖ) = TmExt s t p
+
+  -- Note that this implies FunExt
 open Identity using (Id; Refl)
 
 
@@ -606,6 +615,7 @@ module Sum where
       ElimSum A B Q u v w [ σ ] ≡ ElimSum (A [ σ ]T) (B [ σ ]T) (Q [ liftˢ σ (Sum A B) ]T) (u [ liftˢ σ A ]) (v [ liftˢ σ B ]) (w [ σ ])
     ElimSum[] = refl
 open Sum using (Sum; Inj1; Inj2; ElimSum)
+
 
 --------------------------------------------------------------------------------
 ---- ℕ
@@ -786,17 +796,10 @@ module Resizing where
       Bᵖ b = Bᵖ' b .proj₁
 
       fwd' : (a : ⟨ A ⟩) → ⟨ Aᵖ a ⟩ → ⟨ Bᵖ (fwd a) ⟩
-      fwd' a u = Bᵖ' (fwd a) .proj₂ .proj₁ (subst (λ a → ⟨ Aᵖ a ⟩) (prop A a (bwd (fwd a))) u)
+      fwd' a u = Bᵖ' (fwd a) .proj₂ .proj₁ (subst (λ a' → ⟨ Aᵖ a' ⟩) (prop A a (bwd (fwd a))) u)
 
   RS : (ℓ : Level) → Tm (CxtRS ℓ) (Resize (CxtRSType ℓ))
   RS ℓ = mkTm λ where
     ((tt , (A , Aᵖ)) , u) →
       let ((B , is-prop-B) , (fwd , bwd) , Bᵖ , fwd' , bwd') = RS-lemma ℓ (A , u) Aᵖ
       in  ((B , Bᵖ) , fwd , bwd) , λ γᵖ → ↑ tt , fwd' , bwd'
-
---  -- This does not work, is this a bug?
---  RS' : (ℓ : Level) → Tm (CxtRS ℓ) (Resize (CxtRSType ℓ))
---  RS' ℓ .Tm.S ((tt , (A , Aᵖ)) , u) with RS-lemma ℓ (A , u) Aᵖ
---  ... | (B , is-prop-B) , (fwd , bwd) , Bᵖ , fwd' , bwd' = (B , Bᵖ) , (fwd , bwd)
---  RS' ℓ .Tm.P ((tt , (A , Aᵖ)) , u) with RS-lemma ℓ (A , u) Aᵖ
---  ... | (B , is-prop-B) , (fwd , bwd) , Bᵖ , fwd' , bwd' = λ γᵖ → ↑ tt , {!fwd'!} , {!!}
